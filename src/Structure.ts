@@ -1,5 +1,5 @@
 import { StructureType } from './types/StructureType';
-import { Point } from './main';
+import { Point } from './types/Point';
 import { TileType } from './types/TileType';
 
 interface StructureConfig {
@@ -54,7 +54,6 @@ export const STRUCTURE_CONFIGS: Record<StructureType, StructureConfig> = {
 export class Structure {
   private type: StructureType;
   private position: Point;
-  private health: number = 100;
   private storage: Map<string, number> = new Map();
   private maxStorage: number = 50;
   private constructionProgress: number = 0;

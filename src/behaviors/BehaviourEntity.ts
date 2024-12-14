@@ -1,4 +1,5 @@
-import { Point } from '../main';
+import { Point } from '../types/Point';
+import { TileType } from '../types/TileType';
 
 export interface BehaviorEntity {
   clearTarget(): void;

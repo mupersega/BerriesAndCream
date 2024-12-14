@@ -2,7 +2,7 @@ import { ResourceType } from '../Resource';
 import { Agent } from '../Agent';
 import { Resource } from '../Resource';
 import { InventoryItem } from '../types/InventoryItem';
-import { Point } from '../main';
+import { Point } from '../types/Point';
 
 export const UIComponents = {
   createAgentCard(agent: Agent, index: number): string {

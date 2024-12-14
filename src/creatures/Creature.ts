@@ -1,8 +1,8 @@
 import { TileType } from '../types/TileType';
 import { BehaviorManager } from '../behaviors/BehaviorManager';
-import { Point } from '../main';
+import { Point } from '../types/Point';
 import { CreatureType } from '../types/CreatureType';
-import { BehaviorEntity } from '../behaviors/BehaviorEntity';
+import { BehaviorEntity } from '../behaviors/BehaviourEntity';
 
 export class Creature implements BehaviorEntity {
     protected x: number;

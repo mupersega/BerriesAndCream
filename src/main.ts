@@ -3,8 +3,9 @@ import './style.scss'
 import { Dijkstra } from './pathfinding/Dijkstra';
 import { TileType } from './types/TileType';
 import { initInfoPanel } from './UI/components';
-import { Structure } from './Structure';
 import { StructureType } from './types/StructureType';
+import { Point } from './types/Point';
+import { gameState } from './state/GameState';
 
 type Node = {
   position: { x: number, y: number };
@@ -13,11 +14,6 @@ type Node = {
   isExplored: boolean;
   isInOpenSet: boolean;
   isInPath: boolean;
-};
-
-export type Point = {
-  x: number;
-  y: number;
 };
 
 // Simple 2D noise implementation
@@ -362,40 +358,20 @@ import { Agent } from './Agent';
 // Add Resource import at the top
 import { Resource, ResourceType } from './Resource';
 
-// Add agent instance and click handler variables
-let agents: Agent[] = [];
 let canvas: HTMLCanvasElement;
 let ctx: CanvasRenderingContext2D;
+let backgroundCanvas: HTMLCanvasElement;
+let backgroundCtx: CanvasRenderingContext2D;
 
 // Add global constants
 const mapWidth = 100;
 const mapHeight = 100;
 const tileSize = 16;
 
-// Add animation variables
-let lastRenderTime = 0;
-
 // Add mouse position tracking
 let mouseX = 0;
 let mouseY = 0;
 let hoveredResource: Resource | null = null;
-
-// Add these variables at the top with other globals
-let backgroundCanvas: HTMLCanvasElement;
-let backgroundCtx: CanvasRenderingContext2D;
-
-// Add at the top with other globals
-interface GameState {
-  resources: Resource[];
-  structures: Structure[];
-  map: TileType[][];
-  addResource: (resource: Resource) => void;
-  removeResource: (resource: Resource) => void;
-  addStructure: (structure: Structure) => void;
-  removeStructure: (structure: Structure) => void;
-  getSpritesheet: () => HTMLImageElement;
-  getTileAt: (x: number, y: number) => TileType;
-}
 
 // Add at the top with other globals
 interface DebugFlags {
@@ -417,88 +393,11 @@ window.DEBUG = {
   }
 };
 
-// Add at the top with other globals
-let spritesheetCache: HTMLImageElement | null = null;
-
-// Replace the getSpritesheet implementation in gameState
-window.gameState = {
-  resources: [],
-  structures: [],
-  map: [],
-  addResource: (resource: Resource) => {
-    window.gameState.resources.push(resource);
-    console.log('Resource added:', resource);
-  },
-  removeResource: (resource: Resource) => {
-    const index = window.gameState.resources.indexOf(resource);
-    if (index > -1) {
-      resource.remove();
-      window.gameState.resources.splice(index, 1);
-      console.log('Resource removed:', resource);
-    }
-  },
-  addStructure: (structure: Structure) => {
-    window.gameState.structures.push(structure);
-    console.log('Structure added:', structure);
-  },
-  removeStructure: (structure: Structure) => {
-    const index = window.gameState.structures.indexOf(structure);
-    if (index > -1) {
-      window.gameState.structures.splice(index, 1);
-      console.log('Structure removed:', structure);
-    }
-  },
-  getSpritesheet: () => {
-    if (spritesheetCache) {
-      return spritesheetCache;
-    }
-
-    const img = new Image();
-    img.src = '/sprites.png';
-    
-    img.onerror = () => console.error('Failed to load spritesheet');
-    img.onload = () => console.log('Spritesheet loaded successfully');
-    
-    spritesheetCache = img;
-    return img;
-  },
-  getTileAt: (x: number, y: number) => {
-    x = Math.floor(x);
-    y = Math.floor(y);
-    if (x < 0 || x >= mapWidth || y < 0 || y >= mapHeight) {
-      return TileType.DeepWater;
-    }
-    return window.gameState.map[y][x] || TileType.DeepWater;
-  }
-};
-
-// Add these variables near the top with other globals
-let fpsValues: number[] = [];
-let lastFpsUpdate = 0;
-const FPS_UPDATE_INTERVAL = 500; // Update FPS display every 500ms
-
 // Modify the gameLoop function
-function gameLoop(timestamp: number) {
-  // Calculate FPS
-  const deltaTime = timestamp - lastRenderTime;
-  const fps = 1000 / deltaTime;
-  fpsValues.push(fps);
-  
-  // Update FPS display every 500ms
-  if (timestamp - lastFpsUpdate > FPS_UPDATE_INTERVAL) {
-    const averageFps = Math.round(
-      fpsValues.reduce((sum, value) => sum + value, 0) / fpsValues.length
-    );
-    updateFpsDisplay(averageFps);
-    fpsValues = []; // Reset array
-    lastFpsUpdate = timestamp;
-  }
-
-  lastRenderTime = timestamp;
-
-  if (!window.DEBUG.isPaused && agents) {
-    // Update agents with null check
-    agents.forEach(agent => {
+function gameLoop() {
+  if (!window.DEBUG.isPaused) {
+    // Update agents
+    gameState.getAgents().forEach(agent => {
       if (agent) {
         agent.update();
       }
@@ -509,22 +408,13 @@ function gameLoop(timestamp: number) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   
   // Render map using the map from gameState
-  renderMap(window.gameState.map);
+  renderMap();
 
   requestAnimationFrame(gameLoop);
 }
 
-// Extract update logic to separate function
-function updateGame() {
-  agents.forEach(agent => {
-    if (agent) {
-      agent.update();
-    }
-  });
-}
-
 // Separate render function
-function renderMap(map: TileType[][]) {
+function renderMap() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   
   // Center the view to match background
@@ -532,7 +422,8 @@ function renderMap(map: TileType[][]) {
   ctx.translate(canvas.width / 2, 100);
   
   // Draw hovered tile indicator if mouse is within bounds
-  if (mouseX >= 0 && mouseX < mapWidth && mouseY >= 0 && mouseY < mapHeight) {
+  if (mouseX >= 0 && mouseX < gameState.getMapWidth() && 
+      mouseY >= 0 && mouseY < gameState.getMapHeight()) {
     drawHoveredTile(ctx, mouseX, mouseY);
   }
   
@@ -544,7 +435,7 @@ function renderMap(map: TileType[][]) {
   }> = [];
   
   // Add resources
-  window.gameState.resources.forEach(resource => {
+  gameState.getResources().forEach(resource => {
     const pos = resource.getPosition();
     drawableObjects.push({
       x: pos.x,
@@ -554,7 +445,7 @@ function renderMap(map: TileType[][]) {
   });
 
   // Add structures
-  window.gameState.structures.forEach(structure => {
+  gameState.getStructures().forEach(structure => {
     const pos = structure.getPosition();
     drawableObjects.push({
       x: pos.x,
@@ -564,7 +455,7 @@ function renderMap(map: TileType[][]) {
   });
   
   // Add living agents
-  agents.forEach(agent => {
+  gameState.getAgents().forEach(agent => {
     if (agent && !agent.isDead()) {
       const pos = agent.getPosition();
       drawableObjects.push({
@@ -586,7 +477,7 @@ function renderMap(map: TileType[][]) {
   ctx.restore();
 
   // Draw agent paths
-  agents.forEach(agent => {
+  gameState.getAgents().forEach(agent => {
     if (agent && !agent.isDead()) {
       const path = agent.getCurrentPath();
       if (path.length > 0) {
@@ -596,7 +487,6 @@ function renderMap(map: TileType[][]) {
   });
 }
 
-// Add new function to generate fresh map
 function generateNewMap() {
   // Clear UI elements first
   const agentContainer = document.querySelector('.agent-container');
@@ -605,56 +495,23 @@ function generateNewMap() {
   }
 
   // Clear all game state
-  window.gameState = {
-    ...window.gameState,  // Preserve methods
-    resources: [],        // Clear resources
-    structures: [],       // Clear structures
-    map: []              // Clear map
-  };
+  gameState.clearGameState();
 
-  // Clear existing agents
-  agents.forEach(agent => {
-    if (agent) {
-      agent.cleanup?.();
-    }
-  });
-  agents = [];
-
-  // Generate new map and resources
+  // Generate new map and set it in game state
   const map = generateTileMap(mapWidth, mapHeight);
-  const newResources = Resource.generateResources(map);
-  newResources.forEach(resource => {
-    window.gameState.addResource(resource);
-  });
-  
-  // Create new agents
-  const numAgents = 10;
-  for (let i = 0; i < numAgents; i++) {
-    const agent = new Agent(map, window.gameState.resources);
-    agent.initializeUI(agents.length);
-    agents.push(agent);
-    window.DEBUG.agentDebug[i] = false;
-  }
+  gameState.setMap(map);
 
-  // Add initial structures
-  const structuresToAdd = [
-    { type: StructureType.Farm, count: 2 },
-  ];
-
-  structuresToAdd.forEach(({ type, count }) => {
-    for (let i = 0; i < count; i++) {
-      const location = findSuitableBuildingLocation(map, type);
-      if (location) {
-        const structure = new Structure(type, location);
-        window.gameState.addStructure(structure);
-      }
-    }
-  });
+  // Generate initial game entities
+  gameState.generateInitialResources();
+  gameState.generateInitialStructures([
+    { type: StructureType.Farm, count: 2 }
+  ]);
+  gameState.generateInitialAgents(10);
   
   // Reinitialize UI and render
-  initInfoPanel(agents);
+  initInfoPanel(gameState.getAgents());
   renderBackground(map);
-  renderMap(map);
+  renderMap();
 }
 
 // Initialize the map when the page loads
@@ -663,25 +520,18 @@ initMap();
 // Add event listener for generate button
 document.getElementById('generateMap')?.addEventListener('click', generateNewMap);
 
-// Make sure initMap starts the game loop
-function initMap() {
+function setupCanvases(): {
+  mainCanvas: HTMLCanvasElement;
+  backgroundCanvas: HTMLCanvasElement;
+  mainCtx: CanvasRenderingContext2D;
+  backgroundCtx: CanvasRenderingContext2D;
+} {
   // Calculate required canvas dimensions for isometric view
   const isoWidth = (mapWidth + mapHeight) * tileSize;
   const isoHeight = (mapWidth + mapHeight) * (tileSize / 2);
 
-  // Generate initial map first
-  const map = generateTileMap(mapWidth, mapHeight);
-  
-  // Initialize gameState with the map
-  window.gameState = {
-    ...window.gameState,
-    map: map,  // Set the map before we start using getTileAt
-    resources: [],
-    structures: []
-  };
-
   // Create background canvas (static elements)
-  backgroundCanvas = document.createElement('canvas');
+  const backgroundCanvas = document.createElement('canvas');
   backgroundCanvas.width = isoWidth;
   backgroundCanvas.height = isoHeight + 200;
   backgroundCanvas.style.cssText = `
@@ -689,134 +539,87 @@ function initMap() {
     top: 0;
     left: 0;
   `;
-  backgroundCtx = backgroundCanvas.getContext('2d')!;
+  const backgroundCtx = backgroundCanvas.getContext('2d')!;
 
   // Create main canvas (dynamic elements)
-  canvas = document.createElement('canvas');
-  canvas.width = isoWidth;
-  canvas.height = isoHeight + 200;
-  canvas.style.cssText = `
+  const mainCanvas = document.createElement('canvas');
+  mainCanvas.width = isoWidth;
+  mainCanvas.height = isoHeight + 200;
+  mainCanvas.style.cssText = `
     position: absolute;
     top: 0;
     left: 0;
   `;
-  ctx = canvas.getContext('2d')!;
+  const mainCtx = mainCanvas.getContext('2d')!;
 
   // Add mouse move listener
-  canvas.addEventListener('mousemove', (event) => {
-    const rect = canvas.getBoundingClientRect();
-    const mouseScreenX = event.clientX - rect.left - canvas.width / 2;
-    const mouseScreenY = event.clientY - rect.top - 100;
-    
-    // First, get a rough estimate of the tile position
-    let tileX = (mouseScreenX / tileSize + mouseScreenY / (tileSize/2)) / 2;
-    let tileY = (mouseScreenY / (tileSize/2) - mouseScreenX / tileSize) / 2;
-    
-    // Round to get initial tile coordinates
-    let initialX = Math.floor(tileX);
-    let initialY = Math.floor(tileY);
-    
-    // Get height of the initial tile guess
-    const tileType = window.gameState.getTileAt(initialX, initialY);
-    let heightFactor = 0;
-    switch (tileType) {
-      case TileType.DeepWater: heightFactor = 0; break;
-      case TileType.Water: heightFactor = 0.15; break;
-      case TileType.Sand: heightFactor = 0.3; break;
-      case TileType.Grass: heightFactor = 0.45; break;
-      case TileType.Highlands: heightFactor = 0.7; break;
-      case TileType.Dirt: heightFactor = 0.8; break;
-      case TileType.Stone: heightFactor = 0.9; break;
-      case TileType.Snow: heightFactor = 1; break;
-    }
-    
-    // Adjust mouse Y position by the height offset
-    const heightOffset = heightFactor * tileSize;
-    const adjustedMouseY = mouseScreenY + heightOffset;
-    
-    // Recalculate tile coordinates with height-adjusted mouse position
-    tileX = (mouseScreenX / tileSize + adjustedMouseY / (tileSize/2)) / 2;
-    tileY = (adjustedMouseY / (tileSize/2) - mouseScreenX / tileSize) / 2;
-    
-    mouseX = Math.floor(tileX);
-    mouseY = Math.floor(tileY);
-    
-    // Update hovered resource
-    hoveredResource = window.gameState.resources.find(resource => {
-      const pos = resource.getPosition();
-      return pos.x === mouseX && pos.y === mouseY;
-    }) || null;
-    
-    updateInfoPanel();
-  });
+  mainCanvas.addEventListener('mousemove', handleMouseMove);
+
+  return { mainCanvas, backgroundCanvas, mainCtx, backgroundCtx };
+}
+
+function handleMouseMove(event: MouseEvent) {
+  if (!canvas || !gameState) return;
+
+  const rect = canvas.getBoundingClientRect();
+  const mouseScreenX = event.clientX - rect.left - canvas.width / 2;
+  const mouseScreenY = event.clientY - rect.top - 100;
   
-  // Create info panel with separate containers
+  // First, get a rough estimate of the tile position
+  let tileX = (mouseScreenX / tileSize + mouseScreenY / (tileSize/2)) / 2;
+  let tileY = (mouseScreenY / (tileSize/2) - mouseScreenX / tileSize) / 2;
+  
+  mouseX = Math.floor(tileX);
+  mouseY = Math.floor(tileY);
+  
+  // Update hovered resource
+  hoveredResource = gameState.getResources().find(resource => {
+    const pos = resource.getPosition();
+    return pos.x === mouseX && pos.y === mouseY;
+  }) || null;
+  
+  updateInfoPanel();
+}
+
+async function initMap() {
+  // Setup canvases
+  const { mainCanvas: newCanvas, backgroundCanvas: newBackgroundCanvas, mainCtx: newCtx, backgroundCtx: newBackgroundCtx } = setupCanvases();
+  
+  // Update global references
+  canvas = newCanvas;
+  ctx = newCtx;
+  backgroundCanvas = newBackgroundCanvas;
+  backgroundCtx = newBackgroundCtx;
+  
+  // Create info panel
   const infoPanel = document.createElement('div');
   infoPanel.id = 'infoPanel';
-  
   document.querySelector('.styles')?.appendChild(infoPanel);
-  
-  // Initialize agent cards
-  initInfoPanel(agents);
-  
-  // Generate resources after map is set
-  window.gameState.resources = Resource.generateResources(map);
-  
-  // Create initial agents
-  const numAgents = 1;
-  for (let i = 0; i < numAgents; i++) {
-    const agent = new Agent(map, window.gameState.resources);
-    agent.initializeUI(agents.length);
-    agents.push(agent);
-  }
 
-  // Add initial structures
-  const numStructures = 2;
-  for (let i = 0; i < numStructures; i++) {
-    const location = findSuitableBuildingLocation(map, StructureType.Farm);
-    const structure = new Structure(StructureType.Farm, location);
-    window.gameState.addStructure(structure);
-  }
-  
-  // Initial render
-  renderBackground(map);
-  
+  // Add canvases to DOM
   document.getElementById('app')?.appendChild(backgroundCanvas);
   document.getElementById('app')?.appendChild(canvas);
-  
-  // Initialize info panel with agents array
-  initInfoPanel(agents);
+
+  // Wait for spritesheet to load
+  await gameState.loadSpritesheet();
+
+  // Generate initial game state
+  generateNewMap();
   
   // Start the game loop
   requestAnimationFrame(gameLoop);
-
-  // Add FPS counter to the UI
-  const fpsCounter = document.createElement('div');
-  fpsCounter.id = 'fpsCounter';
-  fpsCounter.style.cssText = `
-    position: fixed;
-    top: 10px;
-    right: 10px;
-    background: rgba(0, 0, 0, 0.7);
-    color: white;
-    padding: 5px 10px;
-    border-radius: 4px;
-    font-family: monospace;
-    z-index: 1000;
-  `;
-  document.body.appendChild(fpsCounter);
 }
 
 // Update the updateInfoPanel function to use UIComponents
 function updateInfoPanel() {
   const hoverContainer = document.querySelector('.hover-info-container');
-  if (!hoverContainer) return;
+  if (!hoverContainer || !gameState) return;
   
   let hoverContent = '';
   
   // Tile info (when hovering)
   if (mouseX >= 0 && mouseY >= 0 && mouseX < mapWidth && mouseY < mapHeight) {
-    const tile = agents[0].getMap()[mouseY][mouseX];
+    const tile = gameState.getTileAt(mouseX, mouseY);
     const height = noise.getValue(mouseX, mouseY);
     
     hoverContent += `
@@ -847,7 +650,7 @@ function updateInfoPanel() {
   }
 
   // Structure info (when hovering)
-  const hoveredStructure = window.gameState.structures.find(structure => {
+  const hoveredStructure = gameState.getStructures().find(structure => {
     const pos = structure.getPosition();
     return pos.x === mouseX && pos.y === mouseY;
   });
@@ -857,12 +660,6 @@ function updateInfoPanel() {
       <div class="hover-info">
         <h4>Structure Info</h4>
         <p>Type: ${StructureType[hoveredStructure.getType()]}</p>
-        ${hoveredStructure.getWorkers ? `
-          <p>Workers: ${hoveredStructure.getWorkers().length}</p>
-        ` : ''}
-        ${hoveredStructure.getStorage ? `
-          <p>Storage: ${hoveredStructure.getStorage()}</p>
-        ` : ''}
       </div>
     `;
   }
@@ -1320,30 +1117,10 @@ function drawHoveredTile(ctx: CanvasRenderingContext2D, x: number, y: number) {
   ctx.fill();
 }
 
-// Add to main.ts
-function isNearWater(map: TileType[][], x: number, y: number, radius: number): boolean {
-  for (let dy = -radius; dy <= radius; dy++) {
-    for (let dx = -radius; dx <= radius; dx++) {
-      const checkX = x + dx;
-      const checkY = y + dy;
-      
-      // Check bounds
-      if (checkX >= 0 && checkX < map[0].length && 
-          checkY >= 0 && checkY < map.length) {
-        const tile = map[checkY][checkX];
-        if (tile === TileType.Water || tile === TileType.DeepWater) {
-          return true;
-        }
-      }
-    }
-  }
-  return false;
-}
-
 // Add to your window declarations
 declare global {
   interface Window {
-    gameState: GameState;
+    gameState: typeof gameState;
     DEBUG: DebugFlags & {
       toggleAgentDebug: (index: number) => void;
     };
@@ -1351,148 +1128,21 @@ declare global {
   }
 }
 
+// Make gameState available globally if needed
+window.gameState = gameState;
+
 // Add the behavior change handler
 window.changeBehavior = (agentIndex: number, behaviorName: string) => {
-  if (agents[agentIndex]) {
-    agents[agentIndex].setBehavior(behaviorName);
+  if (gameState.getAgents()[agentIndex]) {
+    gameState.getAgents()[agentIndex].setBehavior(behaviorName);
     console.log(`Changed agent ${agentIndex} behavior to ${behaviorName}`);
   }
 };
 
-// Add this new function
-function updateFpsDisplay(fps: number) {
-  const fpsElement = document.getElementById('fpsCounter');
-  if (fpsElement) {
-    fpsElement.textContent = `${fps} FPS`;
-  }
-}
-
-// Add this helper function to find suitable building locations
-function findSuitableBuildingLocation(map: TileType[][], structureType: StructureType): Point | null {
-  const validTiles: Point[] = [];
-  
-  // Define criteria based on structure type
-  const isValidTile = (x: number, y: number): boolean => {
-    // First check bounds
-    if (x < 2 || x >= map[0].length - 2 || y < 2 || y >= map.length - 2) {
-      return false;
-    }
-
-    const tile = map[y][x];
-    
-    // Check surrounding tiles to ensure there's enough flat ground
-    const hasFlatGround = [-1, 0, 1].every(dy => 
-      [-1, 0, 1].every(dx => {
-        const checkX = x + dx;
-        const checkY = y + dy;
-        return map[checkY][checkX] === tile;
-      })
-    );
-
-    switch (structureType) {
-      case StructureType.Farm:
-        // Farms need:
-        // - To be on grass
-        // - Near water (within 3 tiles)
-        // - Not near other structures (5 tiles)
-        // - On flat ground
-        return tile === TileType.Grass && 
-               isNearWater(map, x, y, 3) && 
-               !isNearStructure(x, y, 5) &&
-               hasFlatGround;
-      
-      case StructureType.House:
-        // Houses need:
-        // - To be on grass or highlands
-        // - Not too close to water (2 tiles)
-        // - Not near other structures (4 tiles)
-        // - On flat ground
-        return (tile === TileType.Grass || tile === TileType.Highlands) && 
-               !isNearWater(map, x, y, 2) &&
-               !isNearStructure(x, y, 4) &&
-               hasFlatGround;
-      
-      default:
-        // Default structure requirements:
-        // - On grass
-        // - Not near other structures
-        // - On flat ground
-        return tile === TileType.Grass &&
-               !isNearStructure(x, y, 3) &&
-               hasFlatGround;
-    }
-  };
-
-  // Scan the map for valid locations
-  for (let y = 2; y < map.length - 2; y++) {
-    for (let x = 2; x < map[0].length - 2; x++) {
-      if (isValidTile(x, y)) {
-        validTiles.push({ x, y });
-      }
-    }
-  }
-
-  // If no valid tiles found, try with relaxed constraints
-  if (validTiles.length === 0) {
-    console.warn(`No ideal location found for ${StructureType[structureType]}, trying with relaxed constraints`);
-    
-    // Scan again with relaxed constraints
-    for (let y = 2; y < map.length - 2; y++) {
-      for (let x = 2; x < map[0].length - 2; x++) {
-        const tile = map[y][x];
-        if (tile === TileType.Grass && !isNearStructure(x, y, 2)) {
-          validTiles.push({ x, y });
-        }
-      }
-    }
-  }
-
-  // If still no valid tiles, log error and return null
-  if (validTiles.length === 0) {
-    console.error(`Could not find any valid location for ${StructureType[structureType]}`);
-    return null;
-  }
-
-  // Sort valid tiles by suitability score
-  const scoredTiles = validTiles.map(tile => {
-    let score = 0;
-    
-    // Add score based on distance to other structures (further is better)
-    const nearestStructure = Math.min(...window.gameState.structures.map(structure => {
-      const pos = structure.getPosition();
-      return Math.abs(pos.x - tile.x) + Math.abs(pos.y - tile.y);
-    }));
-    score += nearestStructure;
-
-    // Add score based on terrain suitability
-    if (structureType === StructureType.Farm && isNearWater(map, tile.x, tile.y, 2)) {
-      score += 5; // Bonus for farms near water
-    }
-
-    return { tile, score };
-  });
-
-  // Sort by score (highest first) and get the best location
-  scoredTiles.sort((a, b) => b.score - a.score);
-  
-  console.log(`Found ${validTiles.length} valid locations for ${StructureType[structureType]}`);
-  return scoredTiles[0].tile;
-}
-
-// Helper function to check if a location is near existing structures
-function isNearStructure(x: number, y: number, radius: number): boolean {
-  return window.gameState.structures.some(structure => {
-    const pos = structure.getPosition();
-    const dx = Math.abs(pos.x - x);
-    const dy = Math.abs(pos.y - y);
-    return dx <= radius && dy <= radius;
-  });
-}
-
 // Add this function to draw the agent's path
 function drawAgentPath(agent: Agent, path: Point[]) {
   // Early return if debug isn't enabled for this agent
-  const agentIndex = agents.indexOf(agent);
+  const agentIndex = gameState.getAgents().indexOf(agent);
   if (!window.DEBUG.agentDebug[agentIndex]) return;
 
   const pos = agent.getPosition();

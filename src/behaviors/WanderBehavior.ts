@@ -2,7 +2,7 @@ import { CreatureBehavior } from './CreatureBehavior';
 import { Creature } from '../creatures/Creature';
 
 export class WanderBehavior implements CreatureBehavior {
-    private readonly WANDER_INTERVAL = 300; // 5 seconds at 60fps
+    private readonly WANDER_INTERVAL = 300;
     private timer: number = 0;
 
     public update(creature: Creature): void {

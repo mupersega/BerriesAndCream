@@ -1,12 +1,11 @@
 import { TileType } from './types/TileType';
 import { Resource, ResourceType } from './Resource';
 import { BehaviorManager } from './behaviors/BehaviorManager';
-import { Corpse } from './Corpse';
 import { AgentRole } from './types/AgentRole';
 import { InventoryItem } from './types/InventoryItem';
-import { Point } from './main';
+import { Point } from './types/Point';
 import { Dijkstra } from './pathfinding/Dijkstra';
-import { BehaviorEntity } from './behaviors/BehaviorEntity';
+import { BehaviorEntity } from './behaviors/BehaviourEntity';
 
 interface AgentObserver {
   onHealthChange?: (health: number) => void;
@@ -572,8 +571,6 @@ export class Agent implements BehaviorEntity {
 
   private die(): void {
     this.isDead_ = true;
-    const corpse = new Corpse(Math.round(this.x), Math.round(this.y));
-    window.gameState.addResource(corpse);
   }
 
   public pickNewRandomTarget(): void {
@@ -753,5 +750,19 @@ export class Agent implements BehaviorEntity {
              neighborTile !== TileType.Snow &&
              agent.hasExploredTile(nx, ny);
     });
+  }
+
+  // Add static method for generating agents
+  public static generateAgents(map: TileType[][], resources: Resource[], count: number): Agent[] {
+    const agents: Agent[] = [];
+    
+    for (let i = 0; i < count; i++) {
+      // Create new agent with random valid position
+      const agent = new Agent(map, resources);
+      agent.initializeUI(i);
+      agents.push(agent);
+    }
+
+    return agents;
   }
 } 
