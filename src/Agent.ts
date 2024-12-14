@@ -38,8 +38,9 @@ export class Agent implements BehaviorEntity, IDrawable {
   private readonly pathfinder = new Dijkstra();
   private facingLeft: boolean = false;
   private animationTime: number = 0;
-  private readonly BOUNCE_SPEED = 0.05;
-  private readonly BOUNCE_HEIGHT = 8;
+  private readonly BOUNCE_SPEED = 0.1;
+  private readonly BOUNCE_HEIGHT = 5;
+  private readonly BOUNCE_SQUASH = 0.05;
   private isMoving: boolean = false;
   private role: AgentRole = AgentRole.Idle;
 
@@ -116,7 +117,7 @@ export class Agent implements BehaviorEntity, IDrawable {
         this.facingLeft = dx < 0;
     }
     
-    const moveSpeed = 0.01;
+    const moveSpeed = 0.008;
     const PUSH_STRENGTH = 0.9;
     
     // Calculate movement
@@ -163,9 +164,18 @@ export class Agent implements BehaviorEntity, IDrawable {
       this.animationTime = 0;
     }
     
-    // Use a smoother bounce curve
+    // Create bounce curve
+    const bounceProgress = (Math.sin(this.animationTime - Math.PI/2) + 1) / 2;
+    const modifiedBounce = Math.pow(bounceProgress, 1.5);
+    const pauseAtBottom = bounceProgress < 0.1 ? 0 : modifiedBounce;
     const bounceOffset = this.isMoving ? 
-      Math.pow(Math.sin(this.animationTime), 2) * this.BOUNCE_HEIGHT : 0;
+      pauseAtBottom * this.BOUNCE_HEIGHT : 0;
+
+    // Adjust squash and stretch
+    const scaleX = this.isMoving ? 
+      1 + ((1 - bounceProgress) * this.BOUNCE_SQUASH) : 1;
+    const scaleY = this.isMoving ? 
+      1 - ((1 - bounceProgress) * this.BOUNCE_SQUASH) : 1;
 
     console.log('Agent bounce:', {
       isMoving: this.isMoving,
@@ -179,7 +189,7 @@ export class Agent implements BehaviorEntity, IDrawable {
     // Draw health bar
     this.drawHealthBar(ctx, screenX, screenY);
 
-    // Draw agent sprite with bounce
+    // Draw agent sprite with bounce and scale
     IsometricRenderer.drawSprite(
       ctx,
       spritesheet,
@@ -190,7 +200,9 @@ export class Agent implements BehaviorEntity, IDrawable {
         height: 32,
         anchorBottom: true,
         verticalOffset: 0,
-        additionalOffset: bounceOffset
+        additionalOffset: bounceOffset,
+        scaleX: scaleX,
+        scaleY: scaleY
       },
       screenX,
       screenY,
@@ -202,24 +214,61 @@ export class Agent implements BehaviorEntity, IDrawable {
   private drawShadow(ctx: CanvasRenderingContext2D, x: number, y: number): void {
     const verticalOffset = IsometricRenderer.getHeightOffset(this.x, this.y);
     const bounceOffset = this.isMoving ? 
-      (1 - Math.cos(this.animationTime)) * this.BOUNCE_HEIGHT * 0.5 : 0;
+        (1 - Math.cos(this.animationTime)) * this.BOUNCE_HEIGHT * 0.5 : 0;
     
-    const shadowAlpha = Math.max(0.1, 0.3 - (verticalOffset / 100));
-    const shadowScaleX = 1 + (bounceOffset / 16);
-    const shadowScaleY = 1 - (bounceOffset / 32);
+    // Shadow parameters
+    const shadowBaseWidth = 16;
+    const shadowBaseHeight = 4;
+    const shadowStretch = 12;
     
+    // Calculate shadow offset based on bounce height
+    const shadowOffsetX = bounceOffset * 0.7;
+    const shadowOffsetY = -bounceOffset * 0.7;
+    
+    // Adjust shadow based on bounce
+    const shadowScaleX = 1 + (bounceOffset / 32);
+    const shadowScaleY = 1 - (bounceOffset / 48);
+    const shadowAlpha = 0.3;
+
     ctx.save();
     ctx.fillStyle = `rgba(0, 0, 0, ${shadowAlpha})`;
+    
     ctx.beginPath();
-    ctx.ellipse(
-      x + 6,
-      y - verticalOffset + 5,
-      8 * shadowScaleX,
-      2 * shadowScaleY,
-      0,
-      0,
-      Math.PI * 2
+    ctx.translate(
+        x + shadowOffsetX, 
+        y + 5 - verticalOffset + shadowOffsetY
     );
+    
+    // Start at bottom left
+    ctx.moveTo(-shadowBaseWidth/2 * shadowScaleX, 0);
+    
+    // Bottom curve
+    ctx.quadraticCurveTo(
+        0, shadowBaseHeight * shadowScaleY,
+        shadowBaseWidth/2 * shadowScaleX, 0
+    );
+    
+    // Right side curve with multiple control points for smoother transition
+    ctx.bezierCurveTo(
+        shadowBaseWidth/2 * shadowScaleX + shadowStretch/3, -shadowStretch/4,
+        shadowBaseWidth/3 * shadowScaleX + shadowStretch/2, -shadowStretch/1.5,
+        shadowBaseWidth/4 * shadowScaleX + shadowStretch, -shadowStretch
+    );
+    
+    // Top curve (smoother transition)
+    ctx.bezierCurveTo(
+        shadowBaseWidth/8 * shadowScaleX + shadowStretch/2, -shadowStretch * 1.1,
+        -shadowBaseWidth/8 * shadowScaleX + shadowStretch/2, -shadowStretch * 1.1,
+        -shadowBaseWidth/4 * shadowScaleX + shadowStretch, -shadowStretch
+    );
+    
+    // Left side curve
+    ctx.bezierCurveTo(
+        -shadowBaseWidth/3 * shadowScaleX + shadowStretch/2, -shadowStretch/1.5,
+        -shadowBaseWidth/2 * shadowScaleX + shadowStretch/3, -shadowStretch/4,
+        -shadowBaseWidth/2 * shadowScaleX, 0
+    );
+    
     ctx.fill();
     ctx.restore();
   }

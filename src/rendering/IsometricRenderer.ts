@@ -9,6 +9,8 @@ export interface SpriteConfig {
   anchorBottom?: boolean;
   verticalOffset?: number;
   additionalOffset?: number;
+  scaleX?: number;
+  scaleY?: number;
 }
 
 export class IsometricRenderer {
@@ -44,13 +46,16 @@ export class IsometricRenderer {
     const verticalOffset = this.getHeightOffset(worldX, worldY);
     const totalOffset = (config.verticalOffset || 0) + (config.additionalOffset || 0);
     
-    if (config.additionalOffset) {
-      console.log('Drawing sprite with:', {
-        originalScreenY: screenY,
-        totalOffset,
-        additionalOffset: config.additionalOffset,
-        newScreenY: screenY - totalOffset
-      });
+    ctx.save();
+    
+    const centerX = screenX;
+    const centerY = screenY - totalOffset - verticalOffset - 
+      (config.anchorBottom ? config.height - (this.TILE_SIZE/2) : config.height/2);
+
+    if (config.scaleX !== undefined || config.scaleY !== undefined) {
+      ctx.translate(centerX, centerY);
+      ctx.scale(config.scaleX ?? 1, config.scaleY ?? 1);
+      ctx.translate(-centerX, -centerY);
     }
 
     if (config.anchorBottom) {
@@ -78,6 +83,8 @@ export class IsometricRenderer {
         config.height
       );
     }
+
+    ctx.restore();
   }
 
   public static worldToScreen(worldX: number, worldY: number): { x: number, y: number } {
