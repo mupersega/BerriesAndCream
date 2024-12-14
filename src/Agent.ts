@@ -6,6 +6,8 @@ import { InventoryItem } from './types/InventoryItem';
 import { Point } from './types/Point';
 import { Dijkstra } from './pathfinding/Dijkstra';
 import { BehaviorEntity } from './behaviors/BehaviourEntity';
+import { IDrawable } from './interfaces/IDrawable';
+import { IsometricRenderer } from './rendering/IsometricRenderer';
 
 interface AgentObserver {
   onHealthChange?: (health: number) => void;
@@ -15,7 +17,7 @@ interface AgentObserver {
   onKnownResourcesChange?: (resources: Resource[]) => void;
 }
 
-export class Agent implements BehaviorEntity {
+export class Agent implements BehaviorEntity, IDrawable {
   private x: number;
   private y: number;
   private map: TileType[][];
@@ -36,8 +38,8 @@ export class Agent implements BehaviorEntity {
   private readonly pathfinder = new Dijkstra();
   private facingLeft: boolean = false;
   private animationTime: number = 0;
-  private readonly BOUNCE_SPEED = 0.1;
-  private readonly BOUNCE_HEIGHT = 2;
+  private readonly BOUNCE_SPEED = 0.05;
+  private readonly BOUNCE_HEIGHT = 8;
   private isMoving: boolean = false;
   private role: AgentRole = AgentRole.Idle;
 
@@ -122,8 +124,12 @@ export class Agent implements BehaviorEntity {
     if (distance < 0.1) {
         this.x = targetX;
         this.y = targetY;
+        this.isMoving = false;
         return;
     }
+    
+    // Set isMoving to true when actually moving
+    this.isMoving = true;
     
     // Try to move
     const moveX = (dx / distance) * moveSpeed;
@@ -140,131 +146,109 @@ export class Agent implements BehaviorEntity {
         // Push directly away from obstacle
         this.x += (this.x - obstacleX) * PUSH_STRENGTH;
         this.y += (this.y - obstacleY) * PUSH_STRENGTH;
-        
-        console.log(`[Agent] Strong push from obstacle at (${obstacleX}, ${obstacleY})`);
     } else {
         this.x = newX;
         this.y = newY;
     }
   }
 
-  public draw(ctx: CanvasRenderingContext2D, x: number, y: number) {
-    const size = 32;
-    
-    // Update movement state based on path and wait time
-    this.isMoving = this.hasPath() && this.waitTime <= 0;
-    
-    // Update animation time with smooth transition
+  public draw(ctx: CanvasRenderingContext2D, screenX: number, screenY: number): void {
+    const spritesheet = window.gameState.getSpritesheetSync();
+    if (!spritesheet?.complete) return;
+
+    // Update bounce animation with debug logging
     if (this.isMoving) {
       this.animationTime = (this.animationTime + this.BOUNCE_SPEED) % (Math.PI * 2);
     } else {
-      // Gradually reduce animation time when stopping
-      this.animationTime = Math.max(0, this.animationTime - this.BOUNCE_SPEED);
+      this.animationTime = 0;
     }
     
-    // Use a smoother curve for the bounce
+    // Use a smoother bounce curve
+    const bounceOffset = this.isMoving ? 
+      Math.pow(Math.sin(this.animationTime), 2) * this.BOUNCE_HEIGHT : 0;
+
+    console.log('Agent bounce:', {
+      isMoving: this.isMoving,
+      animationTime: this.animationTime,
+      bounceOffset: bounceOffset
+    });
+
+    // Draw shadow
+    this.drawShadow(ctx, screenX, screenY);
+
+    // Draw health bar
+    this.drawHealthBar(ctx, screenX, screenY);
+
+    // Draw agent sprite with bounce
+    IsometricRenderer.drawSprite(
+      ctx,
+      spritesheet,
+      {
+        x: this.facingLeft ? 64 : 96,
+        y: 160,
+        width: 32,
+        height: 32,
+        anchorBottom: true,
+        verticalOffset: 0,
+        additionalOffset: bounceOffset
+      },
+      screenX,
+      screenY,
+      this.x,
+      this.y
+    );
+  }
+
+  private drawShadow(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+    const verticalOffset = IsometricRenderer.getHeightOffset(this.x, this.y);
     const bounceOffset = this.isMoving ? 
       (1 - Math.cos(this.animationTime)) * this.BOUNCE_HEIGHT * 0.5 : 0;
     
-    // Calculate height offset based on tile type
-    let heightFactor = 0;
-    const currentTile = this.getCurrentTile();
-    switch (currentTile) {
-      case TileType.DeepWater: heightFactor = 0; break;
-      case TileType.Water: heightFactor = 0.15; break;
-      case TileType.Sand: heightFactor = 0.3; break;
-      case TileType.Grass: heightFactor = 0.45; break;
-      case TileType.Highlands: heightFactor = 0.7; break;
-      case TileType.Dirt: heightFactor = 0.8; break;
-      case TileType.Stone: heightFactor = 1.1; break;
-      case TileType.Snow: heightFactor = 1.3; break;
-    }
+    const shadowAlpha = Math.max(0.1, 0.3 - (verticalOffset / 100));
+    const shadowScaleX = 1 + (bounceOffset / 16);
+    const shadowScaleY = 1 - (bounceOffset / 32);
     
-    const tileHeight = 16; // Should match tileSize from main.ts
-    const verticalOffset = heightFactor * tileHeight;
-    
-    // Draw shadow with dynamic properties
     ctx.save();
-    const shadowAlpha = Math.max(0.1, 0.3 - (verticalOffset / 100)); // Shadow fades with height
-    const shadowScaleX = 1 + (bounceOffset / 16); // Shadow stretches slightly when bouncing
-    const shadowScaleY = 1 - (bounceOffset / 32); // Shadow compresses slightly when bouncing
-    
-    // Position shadow relative to agent's base position
-    const shadowOffsetX = 6;  // Shift right
-    const shadowOffsetY = 5; // Shift up (negative Y to move "behind" in isometric view)
-    
     ctx.fillStyle = `rgba(0, 0, 0, ${shadowAlpha})`;
     ctx.beginPath();
     ctx.ellipse(
-        x + shadowOffsetX,
-        y - verticalOffset + shadowOffsetY,  // Apply the same height offset as the agent
-        8 * shadowScaleX,  // width of shadow
-        2 * shadowScaleY,  // height of shadow
-        0,
-        0,
-        Math.PI * 2
+      x + 6,
+      y - verticalOffset + 5,
+      8 * shadowScaleX,
+      2 * shadowScaleY,
+      0,
+      0,
+      Math.PI * 2
     );
     ctx.fill();
     ctx.restore();
-    
-    // Draw health bar first
-    const barWidth = size;
+  }
+
+  private drawHealthBar(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+    const verticalOffset = IsometricRenderer.getHeightOffset(this.x, this.y);
+    const barWidth = 32;
     const barHeight = 4;
-    const barOffset = size + 8; // Adjusted to be above sprite
-    
-    // Draw health bar background
+    const barOffset = 40;
+
     ctx.fillStyle = '#000';
     ctx.fillRect(
-        x - barWidth/2, 
-        y - verticalOffset - barOffset, 
-        barWidth, 
-        barHeight
+      x - barWidth/2,
+      y - verticalOffset - barOffset,
+      barWidth,
+      barHeight
     );
-    
-    // Draw health bar fill
+
     ctx.fillStyle = '#f00';
     ctx.fillRect(
-        x - barWidth/2, 
-        y - verticalOffset - barOffset, 
-        barWidth * (this.currentHealth / this.maxHealth), 
-        barHeight
+      x - barWidth/2,
+      y - verticalOffset - barOffset,
+      barWidth * (this.currentHealth / this.maxHealth),
+      barHeight
     );
-    
-    // Get spritesheet
-    const spritesheet = window.gameState.getSpritesheet();
-    
-    // Only attempt to draw sprite if spritesheet exists and is loaded
-    if (spritesheet?.complete) {
-        // Agent sprite coordinates in spritesheet
-        const sprite = {
-            x: this.facingLeft ? 64 : 96,
-            y: 160,
-            width: 32,
-            height: 32
-        };
+  }
 
-        // Draw sprite anchored at bottom
-        ctx.drawImage(
-            spritesheet,
-            sprite.x,
-            sprite.y,
-            sprite.width,
-            sprite.height,
-            x - sprite.width/2,
-            y - verticalOffset - sprite.height + (tileHeight/2) - bounceOffset,
-            sprite.width,
-            sprite.height
-        );
-    } else {
-        // Fallback to colored rectangle
-        ctx.fillStyle = 'red';
-        ctx.fillRect(
-            x - size/2,
-            y - verticalOffset - size + (tileHeight/2) - bounceOffset,
-            size,
-            size
-        );
-    }
+  public getDrawOrder(): number {
+    return this.x + this.y;
   }
 
   public getPosition() {
@@ -398,7 +382,8 @@ export class Agent implements BehaviorEntity {
 
   public clearTarget(): void {
     this.target = null;
-    this.currentPath = [];  // Always clear path when clearing target
+    this.currentPath = [];
+    this.isMoving = false;
   }
 
   public getHealth(): number {

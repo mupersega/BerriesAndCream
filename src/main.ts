@@ -6,6 +6,7 @@ import { initInfoPanel } from './UI/components';
 import { StructureType } from './types/StructureType';
 import { Point } from './types/Point';
 import { gameState } from './state/GameState';
+import { RenderSystem } from './rendering/RenderingSystem';
 
 type Node = {
   position: { x: number, y: number };
@@ -357,6 +358,7 @@ import { Agent } from './Agent';
 
 // Add Resource import at the top
 import { Resource, ResourceType } from './Resource';
+import { IDrawable } from './interfaces/IDrawable';
 
 let canvas: HTMLCanvasElement;
 let ctx: CanvasRenderingContext2D;
@@ -403,9 +405,6 @@ function gameLoop() {
       }
     });
   }
-
-  // Clear canvas
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
   
   // Render map using the map from gameState
   renderMap();
@@ -413,69 +412,27 @@ function gameLoop() {
   requestAnimationFrame(gameLoop);
 }
 
-// Separate render function
 function renderMap() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  
-  // Center the view to match background
   ctx.save();
   ctx.translate(canvas.width / 2, 100);
-  
+
   // Draw hovered tile indicator if mouse is within bounds
   if (mouseX >= 0 && mouseX < gameState.getMapWidth() && 
       mouseY >= 0 && mouseY < gameState.getMapHeight()) {
     drawHoveredTile(ctx, mouseX, mouseY);
   }
-  
-  // Create array of all drawable objects with their positions
-  const drawableObjects: Array<{
-    x: number,
-    y: number,
-    draw: (ctx: CanvasRenderingContext2D, x: number, y: number) => void
-  }> = [];
-  
-  // Add resources
-  gameState.getResources().forEach(resource => {
-    const pos = resource.getPosition();
-    drawableObjects.push({
-      x: pos.x,
-      y: pos.y,
-      draw: (ctx, x, y) => resource.draw(ctx, x, y)
-    });
-  });
 
-  // Add structures
-  gameState.getStructures().forEach(structure => {
-    const pos = structure.getPosition();
-    drawableObjects.push({
-      x: pos.x,
-      y: pos.y,
-      draw: (ctx, x, y) => structure.draw(ctx, x, y)
-    });
-  });
-  
-  // Add living agents
-  gameState.getAgents().forEach(agent => {
-    if (agent && !agent.isDead()) {
-      const pos = agent.getPosition();
-      drawableObjects.push({
-        x: pos.x,
-        y: pos.y,
-        draw: (ctx, x, y) => agent.draw(ctx, x, y)
-      });
-    }
-  });
-  
-  // Sort and draw all objects
-  drawableObjects.sort((a, b) => (a.x + a.y) - (b.x + b.y));
-  drawableObjects.forEach(obj => {
-    const isoX = (obj.x - obj.y) * (tileSize);
-    const isoY = (obj.x + obj.y) * (tileSize/2);
-    obj.draw(ctx, isoX, isoY);
-  });
+  const drawables: IDrawable[] = [
+    ...gameState.getResources(),
+    ...gameState.getStructures(),
+    ...gameState.getAgents().filter(agent => !agent.isDead())
+  ];
+
+  RenderSystem.render(ctx, drawables);
+
   
   ctx.restore();
-
   // Draw agent paths
   gameState.getAgents().forEach(agent => {
     if (agent && !agent.isDead()) {
@@ -503,9 +460,7 @@ function generateNewMap() {
 
   // Generate initial game entities
   gameState.generateInitialResources();
-  gameState.generateInitialStructures([
-    { type: StructureType.Farm, count: 2 }
-  ]);
+  gameState.generateInitialStructures();
   gameState.generateInitialAgents(10);
   
   // Reinitialize UI and render

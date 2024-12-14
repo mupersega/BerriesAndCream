@@ -1,4 +1,7 @@
 import { TileType } from './types/TileType';
+import { IDrawable } from './interfaces/IDrawable';
+import { IsometricRenderer } from './rendering/IsometricRenderer';
+import { gameState } from './state/GameState';
 
 export enum ResourceType {
   BerryBush,
@@ -124,7 +127,7 @@ export const RESOURCE_CONFIGS: Record<ResourceType, ResourceConfig> = {
   }
 };
 
-export class Resource {
+export class Resource implements IDrawable {
   private x: number;
   private y: number;
   private type: ResourceType;
@@ -171,62 +174,27 @@ export class Resource {
     }
   }
 
-  public draw(ctx: CanvasRenderingContext2D, x: number, y: number) {
-    // Get sprite info from config
-    const sprite = this.config.sprite;
-    const size = this.config.size;
-    const spritesheet = window.gameState.getSpritesheet();
-    
-    // Calculate height offset based on tile type
-    let heightFactor = 0;
-    const tileType = window.gameState.getTileAt(this.x, this.y);
-    switch (tileType) {
-      case TileType.DeepWater: heightFactor = 0; break;
-      case TileType.Water: heightFactor = 0.15; break;
-      case TileType.Sand: heightFactor = 0.3; break;
-      case TileType.Grass: heightFactor = 0.45; break;
-      case TileType.Highlands: heightFactor = 0.7; break;
-      case TileType.Dirt: heightFactor = 0.8; break;
-      case TileType.Stone: heightFactor = 0.9; break;
-      case TileType.Snow: heightFactor = 1; break;
-    }
-    
-    // Calculate vertical offset based on tile height
-    const tileHeight = 16; // Should match tileSize from main.ts
-    const verticalOffset = heightFactor * tileHeight;
-    
-    // Only attempt to draw sprite if spritesheet exists and is fully loaded
-    if (spritesheet?.complete) {
-      if (this.config.anchorBottom) {
-        ctx.drawImage(
-          spritesheet,
-          sprite.x,
-          sprite.y,
-          sprite.width,
-          sprite.height,
-          x - sprite.width/2,
-          y - verticalOffset - sprite.height + (tileHeight/2) + this.config.verticalOffset,
-          sprite.width,
-          sprite.height
-        );
-      } else {
-        ctx.drawImage(
-          spritesheet,
-          sprite.x,
-          sprite.y,
-          sprite.width,
-          sprite.height,
-          x - sprite.width/2,
-          y - verticalOffset - sprite.height/2 + this.config.verticalOffset,
-          sprite.width,
-          sprite.height
-        );
-      }
-    } else {
-      // Fallback to colored rectangle if spritesheet isn't available
-      ctx.fillStyle = this.getColor();
-      ctx.fillRect(x - size/2, y - verticalOffset - size/2, size, size);
-    }
+  public draw(ctx: CanvasRenderingContext2D, screenX: number, screenY: number): void {
+    const spritesheet = gameState.getSpritesheetSync();
+    if (!spritesheet?.complete) return;
+
+    IsometricRenderer.drawSprite(
+      ctx,
+      spritesheet,
+      {
+        ...this.config.sprite,
+        anchorBottom: this.config.anchorBottom,
+        verticalOffset: this.config.verticalOffset
+      },
+      screenX,
+      screenY,
+      this.x,
+      this.y
+    );
+  }
+
+  public getDrawOrder(): number {
+    return this.x + this.y;  // Simple isometric ordering
   }
 
   public getPosition() {
