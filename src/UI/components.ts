@@ -70,6 +70,11 @@ export function initInfoPanel(agents: Agent[]) {
         window.DEBUG.agentDebug[index] = !window.DEBUG.agentDebug[index];
         debugToggle.textContent = window.DEBUG.agentDebug[index] ? '▼' : '▶';
         debugInfo.classList.toggle('show', window.DEBUG.agentDebug[index]);
+        // render inventory
+        const inventoryContainer = debugInfo.querySelector('.inventory-container');
+        if (inventoryContainer) {
+          inventoryContainer.outerHTML = renderInventory(agent.getInventory());
+        }
         console.log(`Debug toggled for agent ${index}:`, window.DEBUG.agentDebug[index]); // Debug log
       });
 

@@ -5,6 +5,7 @@ import { Dijkstra } from '../pathfinding/Dijkstra';
 import { ItemType } from '../types/ItemType';
 import { InventoryItem } from '../types/InventoryItem';
 import { ResourceType } from '../types/ResourceType';
+import { gameState } from '../state/GameState';
 
 export class ForageBehavior implements AgentBehavior {
   private readonly HARVEST_DELAY = 60;  // 1 second at 60fps
@@ -29,7 +30,7 @@ export class ForageBehavior implements AgentBehavior {
       console.log('[Forage] Inventory full - switching to Flush behavior');
       this.currentBerry = null;
       this.harvestTimer = 0;
-      agent.setBehavior('Flush');  // Switch to Flush instead of Explore
+      agent.setBehavior('idle');
       return;
     }
 
@@ -41,6 +42,12 @@ export class ForageBehavior implements AgentBehavior {
       this.harvestTimer--;
       if (this.harvestTimer === 0) {
         console.log('[Forage] Harvest timer complete, attempting to harvest berry');
+        console.log(`[Forage] Current berry details:`, {
+          type: ResourceType[this.currentBerry.getType()],
+          amount: this.currentBerry.getAmount(),
+          position: this.currentBerry.getPosition()
+        });
+        
         const harvested = this.currentBerry.harvest(1);
         console.log(`[Forage] Harvested amount: ${harvested}`);
         
@@ -75,28 +82,42 @@ export class ForageBehavior implements AgentBehavior {
     }
 
     // If we're near a berry bush, start harvesting it
-    if (!agent.hasTarget()) {
-      const pos = agent.getPosition();
-      console.log('[Forage] Checking for nearby berries');
+    const pos = agent.getPosition();
+    console.log('[Forage] Checking for nearby berries');
+    
+    const resources = gameState.getResources().filter(resource => {
+      if (!this.isBerryResource(resource.getType()) || resource.isDepleted()) return false;
       
-      const berryHere = agent.getKnownResources().find(r => {
-        if (!this.isBerryResource(r.getType()) || r.isDepleted()) return false;
-        
-        const distance = Math.hypot(
-          r.getPosition().x - pos.x,
-          r.getPosition().y - pos.y
-        );
-        
-        return distance <= 0.5;
-      });
+      const resourcePos = resource.getPosition();
+      const distance = Math.hypot(
+        resourcePos.x - pos.x,
+        resourcePos.y - pos.y
+      );
+      
+      return distance <= 0.82;
+    });
 
-      if (berryHere) {
-        console.log(`[Forage] Found berry to harvest at (${berryHere.getPosition().x}, ${berryHere.getPosition().y})`);
-        this.currentBerry = berryHere;
-        this.harvestTimer = this.HARVEST_DELAY;
-        return;
+    if (resources.length > 0) {
+      console.log(`[Forage] Found berry to harvest at (${resources[0].getPosition().x}, ${resources[0].getPosition().y})`);
+      this.currentBerry = resources[0];
+      this.harvestTimer = this.HARVEST_DELAY;
+      agent.clearTarget();
+      return;
+    }
+
+    // Check if we've reached our target
+    if (agent.hasTarget()) {
+      const target = agent.getTarget();
+      const distance = Math.hypot(target.x - pos.x, target.y - pos.y);
+      
+      console.log(`[Forage] Distance to target: ${distance}`);
+      
+      if (distance <= 0.5) {  // If we're close enough to the target
+        console.log('[Forage] Reached target, clearing it');
+        agent.clearTarget();
       } else {
-        console.log('[Forage] No berries in range to harvest');
+        console.log(`[Forage] Moving to target at (${target.x}, ${target.y})`);
+        return;  // Continue moving to target
       }
     }
 
@@ -111,8 +132,6 @@ export class ForageBehavior implements AgentBehavior {
       } else {
         console.log('[Forage] No reachable berries found');
       }
-    } else {
-      console.log(`[Forage] Already has target at (${agent.getTarget().x}, ${agent.getTarget().y})`);
     }
   }
 
@@ -126,11 +145,23 @@ export class ForageBehavior implements AgentBehavior {
     let shortestPathLength = Infinity;
 
     console.log(`[Forage] Searching for nearest berry from position (${pos.x}, ${pos.y})`);
-    console.log('[Forage] Berry count in inventory:', agent.getInventoryCount('Berry'));
-    const knownResources = agent.getKnownResources();
-    console.log(`[Forage] Known resources: ${knownResources.length}`);
+    
+    // Get forageable tiles from GameState
+    const forageableTiles = gameState.getForageableTiles();
+    console.log(`[Forage] Found ${forageableTiles.length} forageable tiles`);
 
-    for (const resource of knownResources) {
+    // Get all resources that are on forageable tiles
+    const resources = gameState.getResources().filter(resource => {
+      const resourcePos = resource.getPosition();
+      return forageableTiles.some(tile => 
+        Math.floor(resourcePos.x) === tile.x && 
+        Math.floor(resourcePos.y) === tile.y
+      );
+    });
+
+    console.log(`[Forage] Filtered to ${resources.length} resources on forageable tiles`);
+
+    for (const resource of resources) {
       if (!this.isBerryResource(resource.getType()) || resource.isDepleted()) {
         console.log(`[Forage] Skipping resource: ${resource.getType()} (depleted: ${resource.isDepleted()})`);
         continue;

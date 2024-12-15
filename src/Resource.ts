@@ -206,11 +206,17 @@ export class Resource implements IDrawable {
   }
 
   public harvest(amount: number): number {
+    console.log(`[Resource] Attempting to harvest ${amount} from ${ResourceType[this.type]} at (${this.x}, ${this.y})`);
+    console.log(`[Resource] Current amount: ${this.amount}, Max amount: ${this.maxAmount}`);
+    
     const harvested = Math.min(this.amount, amount);
     this.amount -= harvested;
     
+    console.log(`[Resource] Harvested ${harvested}, Remaining amount: ${this.amount}`);
+    
     // If depleted, notify the game state
     if (this.isDepleted()) {
+      console.log(`[Resource] Resource depleted, removing from game state`);
       window.gameState.removeResource(this);
     }
     
