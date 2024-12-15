@@ -5,6 +5,7 @@ import { TileType } from '../types/TileType';
 import { Resource } from '../Resource';
 import { ResourceType } from '../types/ResourceType';
 import { GameState } from '../state/GameState';
+import { getTilesInRadius } from '../utils/tileUtils';
 
 export const UIComponents = {
   createAgentCard(agent: Agent, index: number): string {
@@ -230,4 +231,101 @@ export function updateSelectedTilePanel(selectedTile: Point | null, gameState: G
     <p>Type: ${TileType[tile]}</p>
     ${resourcesHtml}
   `;
+}
+
+export function initActionPanel() {
+  const uiContainer = document.querySelector('.ui');
+  if (!uiContainer) return;
+
+  // Create action panel with toggle buttons
+  const actionPanel = document.createElement('div');
+  actionPanel.className = 'action-panel';
+  actionPanel.innerHTML = `
+    <div class="action-group">
+      <button class="action-button find-button">Find in Area (1-5)</button>
+      <button class="toggle-button find-toggle" data-active="true">👁</button>
+    </div>
+    <div class="action-group">
+      <button class="action-button forage-button">Forage in Area</button>
+      <button class="toggle-button forage-toggle" data-active="true">👁</button>
+    </div>
+    <button class="action-button clear-button">Clear All Areas (C)</button>
+  `;
+  
+  uiContainer.appendChild(actionPanel);
+
+  // Add visibility state to window.DEBUG
+  window.DEBUG.showFindableTiles = true;
+  window.DEBUG.showForageableTiles = true;
+
+  // Add click handlers for toggles
+  const findToggle = actionPanel.querySelector('.find-toggle');
+  const forageToggle = actionPanel.querySelector('.forage-toggle');
+
+  findToggle?.addEventListener('click', () => {
+    const button = findToggle as HTMLButtonElement;
+    window.DEBUG.showFindableTiles = !window.DEBUG.showFindableTiles;
+    button.dataset.active = window.DEBUG.showFindableTiles.toString();
+  });
+
+  forageToggle?.addEventListener('click', () => {
+    const button = forageToggle as HTMLButtonElement;
+    window.DEBUG.showForageableTiles = !window.DEBUG.showForageableTiles;
+    button.dataset.active = window.DEBUG.showForageableTiles.toString();
+  });
+
+  // Add click handlers
+  const findButton = actionPanel.querySelector('.find-button');
+  const forageButton = actionPanel.querySelector('.forage-button');
+  const clearButton = actionPanel.querySelector('.clear-button');
+
+  if (findButton) {
+    findButton.addEventListener('click', () => {
+      const selectedTile = gameState.getSelectedTile();
+      if (!selectedTile) return;
+
+      const tilesInRadius = getTilesInRadius(selectedTile, 8, gameState);
+      tilesInRadius.forEach(tile => {
+        gameState.markTileAsFindable(tile.x, tile.y);
+      });
+    });
+  }
+
+  if (forageButton) {
+    forageButton.addEventListener('click', () => {
+      const selectedTile = gameState.getSelectedTile();
+      if (!selectedTile) return;
+
+      const tilesInRadius = getTilesInRadius(selectedTile, 5, gameState);
+      tilesInRadius.forEach(tile => {
+        gameState.markTileAsForageable(tile.x, tile.y);
+      });
+    });
+  }
+
+  if (clearButton) {
+    clearButton.addEventListener('click', () => {
+      gameState.clearAllMarkedTiles();
+    });
+  }
+
+  // Add keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+    // Only trigger if not typing in an input field
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+      return;
+    }
+
+    switch (e.key) {
+      case '1':
+        findButton?.click();
+        break;
+      case '2':
+        forageButton?.click();
+        break;
+      case 'c':
+        clearButton?.click();
+        break;
+    }
+  });
 }

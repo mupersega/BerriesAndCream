@@ -2,7 +2,7 @@ import './style.scss'
 
 import { Dijkstra } from './pathfinding/Dijkstra';
 import { TileType } from './types/TileType';
-import { initInfoPanel, initSelectedTilePanel, updateSelectedTilePanel } from './UI/components';
+import { initInfoPanel, initSelectedTilePanel, updateSelectedTilePanel, initActionPanel } from './UI/components';
 import { StructureType } from './types/StructureType';
 import { Point } from './types/Point';
 import { gameState } from './state/GameState';
@@ -415,6 +415,9 @@ function renderMap() {
   ctx.save();
   ctx.translate(canvas.width / 2, 100);
 
+  // Draw all overlays in a single batch
+  drawTileOverlays(ctx);
+
   // Draw hovered tile indicator if mouse is within bounds
   if (mouseX >= 0 && mouseX < gameState.getMapWidth() && 
       mouseY >= 0 && mouseY < gameState.getMapHeight()) {
@@ -433,6 +436,7 @@ function renderMap() {
   RenderSystem.render(ctx, drawables);
 
   ctx.restore();
+  
   // Draw agent paths
   gameState.getAgents().forEach(agent => {
     if (agent && !agent.isDead()) {
@@ -466,6 +470,7 @@ function generateNewMap() {
   // Reinitialize UI and render
   initInfoPanel(gameState.getAgents());
   initSelectedTilePanel();
+  initActionPanel();
   renderBackground(map);
   renderMap();
 }
@@ -1246,4 +1251,74 @@ function drawSelectedTile(ctx: CanvasRenderingContext2D) {
   const pulseAmount = Math.sin(Date.now() / 500) * 0.2 + 0.4;
   ctx.fillStyle = `rgba(255, 255, 255, ${pulseAmount})`;
   ctx.fill();
+}
+
+// Helper function to draw all tile overlays efficiently
+function drawTileOverlays(ctx: CanvasRenderingContext2D) {
+  // Start a single path for all overlays
+  ctx.beginPath();
+
+  // Draw findable tiles
+  if (window.DEBUG.showFindableTiles) {
+    gameState.getFindableTiles().forEach(tile => {
+      const tileType = gameState.getTileAt(tile.x, tile.y);
+      const heightFactor = getTileHeightFactor(tileType);
+      const verticalOffset = heightFactor * tileSize;
+      
+      const isoX = (tile.x - tile.y) * tileSize;
+      const isoY = (tile.x + tile.y) * (tileSize/2) - verticalOffset;
+      
+      // Add to path instead of creating new one
+      ctx.moveTo(isoX, isoY);
+      ctx.lineTo(isoX + tileSize, isoY + tileSize/2);
+      ctx.lineTo(isoX, isoY + tileSize);
+      ctx.lineTo(isoX - tileSize, isoY + tileSize/2);
+      ctx.closePath();
+    });
+  }
+  
+  // Fill all findable tiles at once
+  ctx.fillStyle = 'rgba(0, 255, 255, 0.3)';
+  ctx.fill();
+  
+  // Start new path for forageable tiles
+  ctx.beginPath();
+  
+  // Draw forageable tiles
+  if (window.DEBUG.showForageableTiles) {
+    gameState.getForageableTiles().forEach(tile => {
+      const tileType = gameState.getTileAt(tile.x, tile.y);
+      const heightFactor = getTileHeightFactor(tileType);
+      const verticalOffset = heightFactor * tileSize;
+      
+      const isoX = (tile.x - tile.y) * tileSize;
+      const isoY = (tile.x + tile.y) * (tileSize/2) - verticalOffset;
+      
+      // Add to path instead of creating new one
+      ctx.moveTo(isoX, isoY);
+      ctx.lineTo(isoX + tileSize, isoY + tileSize/2);
+      ctx.lineTo(isoX, isoY + tileSize);
+      ctx.lineTo(isoX - tileSize, isoY + tileSize/2);
+      ctx.closePath();
+    });
+  }
+  
+  // Fill all forageable tiles at once
+  ctx.fillStyle = 'rgba(255, 165, 0, 0.3)';
+  ctx.fill();
+}
+
+// Helper function to get height factor (move this outside if not already defined)
+function getTileHeightFactor(tileType: TileType): number {
+  switch (tileType) {
+    case TileType.DeepWater: return 0;
+    case TileType.Water: return 0.15;
+    case TileType.Sand: return 0.3;
+    case TileType.Grass: return 0.45;
+    case TileType.Highlands: return 0.6;
+    case TileType.Dirt: return 0.75;
+    case TileType.Stone: return 0.9;
+    case TileType.Snow: return 1;
+    default: return 0;
+  }
 }

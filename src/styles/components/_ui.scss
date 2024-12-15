@@ -183,3 +183,137 @@
     line-height: 8px;
   }
 }
+
+.tile-actions {
+  margin-top: 1rem;
+  
+  .action-button {
+    padding: 0.5rem 1rem;
+    margin: 0.25rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #2c3e50;
+    color: white;
+    cursor: pointer;
+    
+    &:hover {
+      background: #34495e;
+    }
+    
+    &.find-button {
+      background: #16a085;
+      
+      &:hover {
+        background: #1abc9c;
+      }
+    }
+
+    &.forage-button {
+      background: #d35400;
+      
+      &:hover {
+        background: #e67e22;
+      }
+    }
+
+    &.clear-button {
+      background: #7f8c8d;
+      
+      &:hover {
+        background: #95a5a6;
+      }
+    }
+  }
+}
+
+.action-panel {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 
+    inset 0 0 15px rgba(255,255,255,0.1),
+    0 4px 8px rgba(0,0,0,0.2);
+  z-index: 1000;
+  display: flex;
+  gap: 0.5rem;
+  animation: slideIn 0.3s ease-out;
+
+  .action-group {
+    display: flex;
+    gap: 0.25rem;
+  }
+
+  .action-button {
+    padding: 0.5rem 1rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    &.find-button {
+      background: #16a085;
+      
+      &:hover {
+        background: #1abc9c;
+      }
+    }
+
+    &.forage-button {
+      background: #d35400;
+      
+      &:hover {
+        background: #e67e22;
+      }
+    }
+
+    &.clear-button {
+      background: #7f8c8d;
+      
+      &:hover {
+        background: #95a5a6;
+      }
+    }
+  }
+
+  .toggle-button {
+    width: 32px;
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #34495e;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    &[data-active="false"] {
+      background: #2c3e50;
+      opacity: 0.5;
+    }
+
+    &.find-toggle {
+      border-color: #16a085;
+    }
+
+    &.forage-toggle {
+      border-color: #d35400;
+    }
+  }
+}

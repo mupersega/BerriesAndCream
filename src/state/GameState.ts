@@ -14,6 +14,8 @@ export class GameState {
   private spritesheet: HTMLImageElement | null = null;
   private spritesheetLoadPromise: Promise<HTMLImageElement> | null = null;
   private selectedTile: Point | null = null;
+  private findableTiles: Set<string> = new Set();
+  private forageableTiles: Set<string> = new Set();
 
   // Add a method to preload the spritesheet
   async loadSpritesheet(): Promise<HTMLImageElement> {
@@ -194,6 +196,52 @@ export class GameState {
 
   setSelectedTile(point: Point | null): void {
     this.selectedTile = point;
+  }
+
+  // Add methods to manage findable tiles
+  markTileAsFindable(x: number, y: number): void {
+    this.findableTiles.add(`${x},${y}`);
+  }
+
+  clearFindableTiles(): void {
+    this.findableTiles.clear();
+  }
+
+  isTileFindable(x: number, y: number): boolean {
+    return this.findableTiles.has(`${x},${y}`);
+  }
+
+  getFindableTiles(): Point[] {
+    return Array.from(this.findableTiles).map(coord => {
+      const [x, y] = coord.split(',').map(Number);
+      return { x, y };
+    });
+  }
+
+  // Add methods for forageable tiles
+  markTileAsForageable(x: number, y: number): void {
+    this.forageableTiles.add(`${x},${y}`);
+  }
+
+  clearForageableTiles(): void {
+    this.forageableTiles.clear();
+  }
+
+  isTileForageable(x: number, y: number): boolean {
+    return this.forageableTiles.has(`${x},${y}`);
+  }
+
+  getForageableTiles(): Point[] {
+    return Array.from(this.forageableTiles).map(coord => {
+      const [x, y] = coord.split(',').map(Number);
+      return { x, y };
+    });
+  }
+
+  // Add method to clear all marked tiles
+  clearAllMarkedTiles(): void {
+    this.findableTiles.clear();
+    this.forageableTiles.clear();
   }
 }
 

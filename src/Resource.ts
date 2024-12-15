@@ -67,7 +67,6 @@ export const RESOURCE_CONFIGS: Record<ResourceType, ResourceConfig> = {
     color: '#cc2166',
     size: 32,
     validTiles: [
-      { type: TileType.Grass, weight: 0.3 },
       { type: TileType.Highlands, weight: 1 }
     ],
     spawnDensity: 0.003,
