@@ -2,10 +2,11 @@
 import { AgentBehavior } from './AgentBehavior';
 import { Agent } from '../Agent';
 import { Resource } from '../Resource';
-import { ResourceType } from '../types/ResourceType';
 import { Dijkstra } from '../pathfinding/Dijkstra';
 import { ItemType } from '../types/ItemType';
 import { InventoryItem } from '../types/InventoryItem';
+import { ResourceType } from '../types/ResourceType';
+import { gameState } from '../state/GameState';
 
 export class FellBehavior implements AgentBehavior {
   private readonly CHOP_DELAY = 120;  // 2 seconds at 60fps (trees take longer than berries)
@@ -22,28 +23,21 @@ export class FellBehavior implements AgentBehavior {
   }
 
   update(agent: Agent): void {
-    console.log(`[Fell] Starting update for agent at (${agent.getPosition().x}, ${agent.getPosition().y})`);
-    console.log('[Fell] Wood count in inventory:', agent.getInventoryCount('Wood'));
-    
     // Stop chopping if inventory is full and not currently chopping
     if (!agent.hasInventorySpace() && !this.currentTree) {
-      console.log('[Fell] Inventory full and not chopping - switching to Explore behavior');
       this.currentTree = null;
       this.chopTimer = 0;
-      agent.setBehavior('Explore');
+      agent.setBehavior('idle');
       return;
     }
 
     // If we're currently chopping, continue the chop
     if (this.currentTree && this.chopTimer > 0) {
-      console.log(`[Fell] Continuing chop - ${this.chopTimer} ticks remaining`);
       agent.clearTarget();
       
       this.chopTimer--;
       if (this.chopTimer === 0) {
-        console.log('[Fell] Chop timer complete, attempting to harvest wood');
         const harvested = this.currentTree.harvest(1);
-        console.log(`[Fell] Harvested amount: ${harvested}`);
         
         if (harvested > 0) {
           const added = agent.addToInventory({
@@ -51,11 +45,8 @@ export class FellBehavior implements AgentBehavior {
             quantity: 1
           } as InventoryItem);
           
-          console.log(`[Fell] Inventory add ${added ? 'successful' : 'failed'}`);
-          
           // If we couldn't add to inventory, put it back in the tree
           if (!added) {
-            console.log('[Fell] Returning wood to tree - inventory full');
             this.currentTree.addAmount(1);
             this.currentTree = null;
             return;
@@ -64,11 +55,9 @@ export class FellBehavior implements AgentBehavior {
         
         // Only stop if tree is depleted or inventory is full
         if (this.currentTree.isDepleted() || !agent.hasInventorySpace()) {
-          console.log(`[Fell] Stopping chop - Tree depleted: ${this.currentTree.isDepleted()}, Inventory full: ${!agent.hasInventorySpace()}`);
           this.currentTree = null;
         } else {
           // Continue chopping if we can
-          console.log('[Fell] Continuing chop cycle');
           this.chopTimer = this.CHOP_DELAY;
         }
       }
@@ -76,44 +65,46 @@ export class FellBehavior implements AgentBehavior {
     }
 
     // If we're near a tree, start chopping it
-    if (!agent.hasTarget()) {
-      const pos = agent.getPosition();
-      console.log('[Fell] Checking for nearby trees');
+    const pos = agent.getPosition();
+    
+    const resources = gameState.getResources().filter(resource => {
+      if (!this.isTreeResource(resource.getType()) || resource.isDepleted()) return false;
       
-      const treeHere = agent.getKnownResources().find(r => {
-        if (!this.isTreeResource(r.getType()) || r.isDepleted()) return false;
-        
-        const distance = Math.hypot(
-          r.getPosition().x - pos.x,
-          r.getPosition().y - pos.y
-        );
-        
-        return distance <= 0.5;
-      });
+      const resourcePos = resource.getPosition();
+      const distance = Math.hypot(
+        resourcePos.x - pos.x,
+        resourcePos.y - pos.y
+      );
+      
+      return distance <= 0.82;
+    });
 
-      if (treeHere) {
-        console.log(`[Fell] Found tree to chop at (${treeHere.getPosition().x}, ${treeHere.getPosition().y})`);
-        this.currentTree = treeHere;
-        this.chopTimer = this.CHOP_DELAY;
-        return;
+    if (resources.length > 0) {
+      this.currentTree = resources[0];
+      this.chopTimer = this.CHOP_DELAY;
+      agent.clearTarget();
+      return;
+    }
+
+    // Check if we've reached our target
+    if (agent.hasTarget()) {
+      const target = agent.getTarget();
+      const distance = Math.hypot(target.x - pos.x, target.y - pos.y);
+      
+      if (distance <= 0.5) {  // If we're close enough to the target
+        agent.clearTarget();
       } else {
-        console.log('[Fell] No trees in range to chop');
+        return;  // Continue moving to target
       }
     }
 
     // If we don't have a target, find nearest tree
     if (!agent.hasTarget()) {
-      console.log('[Fell] No current target, searching for nearest tree');
       const nearestTree = this.findNearestTree(agent);
       if (nearestTree) {
         const treePos = nearestTree.getPosition();
-        console.log(`[Fell] Setting target to tree at (${treePos.x}, ${treePos.y})`);
         agent.setTarget(treePos.x, treePos.y);
-      } else {
-        console.log('[Fell] No reachable trees found');
       }
-    } else {
-      console.log(`[Fell] Already has target at (${agent.getTarget().x}, ${agent.getTarget().y})`);
     }
   }
 
@@ -125,14 +116,21 @@ export class FellBehavior implements AgentBehavior {
     const pos = agent.getPosition();
     let nearestTree: Resource | null = null;
     let shortestPathLength = Infinity;
+    
+    // Get fellable tiles from GameState
+    const fellableTiles = gameState.getFellableTiles();
 
-    console.log(`[Fell] Searching for nearest tree from position (${pos.x}, ${pos.y})`);
-    const knownResources = agent.getKnownResources();
-    console.log(`[Fell] Known resources: ${knownResources.length}`);
+    // Get all resources that are on fellable tiles
+    const resources = gameState.getResources().filter(resource => {
+      const resourcePos = resource.getPosition();
+      return fellableTiles.some(tile => 
+        Math.floor(resourcePos.x) === tile.x && 
+        Math.floor(resourcePos.y) === tile.y
+      );
+    });
 
-    for (const resource of knownResources) {
+    for (const resource of resources) {
       if (!this.isTreeResource(resource.getType()) || resource.isDepleted()) {
-        console.log(`[Fell] Skipping resource: ${resource.getType()} (depleted: ${resource.isDepleted()})`);
         continue;
       }
 
@@ -141,8 +139,6 @@ export class FellBehavior implements AgentBehavior {
         resourcePos.x - pos.x,
         resourcePos.y - pos.y
       );
-      
-      console.log(`[Fell] Checking tree at (${resourcePos.x}, ${resourcePos.y}), direct distance: ${directDistance}`);
       
       const path = this.pathfinder.findPath(
         { x: Math.round(pos.x), y: Math.round(pos.y) },
@@ -153,16 +149,13 @@ export class FellBehavior implements AgentBehavior {
       );
 
       const distance = path ? path.length : directDistance;
-      console.log(`[Fell] Path ${path ? 'found' : 'not found'}, distance: ${distance}`);
 
       if (distance < shortestPathLength) {
         shortestPathLength = distance;
         nearestTree = resource;
-        console.log(`[Fell] New nearest tree found at (${resourcePos.x}, ${resourcePos.y})`);
       }
     }
 
-    console.log(`[Fell] Search complete. ${nearestTree ? 'Tree found' : 'No tree found'}`);
     return nearestTree;
   }
 }

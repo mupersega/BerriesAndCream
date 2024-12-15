@@ -1,23 +1,5 @@
 // _controls.scss
 
-.controls {
-    display: flex;
-    gap: 0.8rem;
-    align-items: center;
-    justify-content: center;
-    .title {
-        font-size: 1rem;
-        color: #fff;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    }
-    &.-row {
-        flex-direction: row;
-    }
-    &.-column {
-        flex-direction: column;
-    }
-}
-
 .btn {
     background: rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(74, 144, 226, 0.3);

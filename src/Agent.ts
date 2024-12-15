@@ -38,9 +38,9 @@ export class Agent implements BehaviorEntity, IDrawable {
   private readonly pathfinder = new Dijkstra();
   private facingLeft: boolean = false;
   private animationTime: number = 0;
-  private readonly BOUNCE_SPEED = 0.1;
-  private readonly BOUNCE_HEIGHT = 5;
-  private readonly BOUNCE_SQUASH = 0.05;
+  private readonly BOUNCE_SPEED = 0.08;
+  private readonly BOUNCE_HEIGHT = 10;
+  private readonly BOUNCE_SQUASH = 0.02;
   private isMoving: boolean = false;
 
   // Inventory system

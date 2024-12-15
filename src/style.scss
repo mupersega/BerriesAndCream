@@ -48,7 +48,7 @@ body {
 #app {
   width: 100vw;
   height: 100vh;
-  overflow: auto;
+  overflow: hidden;
   position: relative;
   
   // Center the content
@@ -68,4 +68,55 @@ body {
 canvas {
   image-rendering: pixelated;  // Optional: for crisp pixel art
   will-change: transform;      // Performance optimization
+}
+
+#scroll-zones {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.scroll-zone {
+  position: fixed;
+  pointer-events: auto;
+  
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+}
+
+.scroll-left {
+  left: 0;
+  top: 0;
+  width: 100px;
+  height: 100%;
+  cursor: w-resize;
+}
+
+.scroll-right {
+  right: 0;
+  top: 0;
+  width: 100px;
+  height: 100%;
+  cursor: e-resize;
+}
+
+.scroll-up {
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100px;
+  cursor: n-resize;
+}
+
+.scroll-down {
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100px;
+  cursor: s-resize;
 }

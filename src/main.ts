@@ -2,7 +2,7 @@ import './style.scss'
 
 import { Dijkstra } from './pathfinding/Dijkstra';
 import { TileType } from './types/TileType';
-import { initInfoPanel, initSelectedTilePanel, updateSelectedTilePanel, initActionPanel } from './UI/components';
+import { initInfoPanel, initSelectedTilePanel, updateSelectedTilePanel, initActionPanel, initHoverInfo } from './UI/components';
 import { StructureType } from './types/StructureType';
 import { Point } from './types/Point';
 import { gameState } from './state/GameState';
@@ -471,6 +471,7 @@ function generateNewMap() {
   // Reinitialize UI and render
   initInfoPanel(gameState.getAgents());
   initSelectedTilePanel();
+  initHoverInfo();
   initActionPanel();
   renderBackground(map);
   renderMap();
@@ -590,51 +591,55 @@ async function initMap() {
 
   // Generate initial game state
   generateNewMap();
+  initScrollZones();
   
   // Start the game loop
   requestAnimationFrame(gameLoop);
+  requestAnimationFrame(scrollLoop);
 }
 
 // Update the updateInfoPanel function to use UIComponents
 function updateInfoPanel() {
-  const hoverContainer = document.querySelector('.hover-info-container');
-  if (!hoverContainer || !gameState) return;
-  
-  let hoverContent = '';
-  
+  const tileInfo = document.querySelector('.tile-info');
+  if (!tileInfo || !gameState) return;
+
   // Tile info (when hovering)
   if (mouseX >= 0 && mouseY >= 0 && mouseX < mapWidth && mouseY < mapHeight) {
     const tile = gameState.getTileAt(mouseX, mouseY);
-    const height = noise.getValue(mouseX, mouseY);
-    
-    hoverContent += `
-      <div class="hover-info">
-        <h4>Tile Info</h4>
-        <p>Position: (${mouseX}, ${mouseY})</p>
-        <p>Type: ${TileType[tile]}</p>
-        <p>Height: ${Math.round(height * 100)}</p>
-      </div>
+    const tileInfoContent = `
+      <p class="tile-info">${TileType[tile]} (${mouseX}, ${mouseY})</p>
     `;
+    tileInfo.outerHTML = tileInfoContent;
   }
+    
+  //   hoverContent += `
+  //     <div class="hover-info">
+  //       <h4>Tile Info</h4>
+  //       <p>Position: (${mouseX}, ${mouseY})</p>
+  //       <p>Type: ${TileType[tile]}</p>
+
+
+  //   `;
+  // }
   
   // Resource info (when hovering)
-  if (hoveredResource) {
-    const amount = hoveredResource.getAmount();
-    const maxAmount = hoveredResource.getMaxAmount();
-    const filledBars = Math.max(0, Math.min(10, Math.ceil((amount / maxAmount) * 10)));
-    const emptyBars = Math.max(0, 10 - filledBars);
-    const bars = '█'.repeat(filledBars) + '□'.repeat(emptyBars);
+  // if (hoveredResource) {
+  //   const amount = hoveredResource.getAmount();
+  //   const maxAmount = hoveredResource.getMaxAmount();
+  //   const filledBars = Math.max(0, Math.min(10, Math.ceil((amount / maxAmount) * 10)));
+  //   const emptyBars = Math.max(0, 10 - filledBars);
+  //   const bars = '█'.repeat(filledBars) + '□'.repeat(emptyBars);
     
-    hoverContent += `
-      <div class="hover-info">
-        <h4>Resource Info</h4>
-        <p>Type: ${ResourceType[hoveredResource.getType()]}</p>
-        <p class="stat-line">${amount}/${maxAmount} <span class="bars">${bars}</span></p>
-      </div>
-    `;
-  }
+  //   hoverContent += `
+  //     <div class="hover-info">
+  //       <h4>Resource Info</h4>
+  //       <p>Type: ${ResourceType[hoveredResource.getType()]}</p>
+  //       <p class="stat-line">${amount}/${maxAmount} <span class="bars">${bars}</span></p>
+  //     </div>
+  //   `;
+  // }s
 
-  hoverContainer.innerHTML = hoverContent;
+  // hoverContainer.innerHTML = hoverContent;
 }
 
 // Split render into static and dynamic parts
@@ -1346,5 +1351,85 @@ function getTileHeightFactor(tileType: TileType): number {
     case TileType.Stone: return 0.9;
     case TileType.Snow: return 1;
     default: return 0;
+  }
+}
+
+// Scroll state
+let currentScrollSpeed = 3;
+let scrollDirection: { x: number; y: number; } = { x: 0, y: 0 };
+
+// Use requestAnimationFrame for smooth scrolling
+function scrollLoop() {
+  const app = document.getElementById('app');
+  if (!app) return requestAnimationFrame(scrollLoop);
+
+  const isMoving = scrollDirection.x !== 0 || scrollDirection.y !== 0;
+  if (isMoving) {
+    app.scroll({
+      left: app.scrollLeft + scrollDirection.x * currentScrollSpeed,
+      top: app.scrollTop + scrollDirection.y * currentScrollSpeed,
+      behavior: 'instant'
+    });
+  }
+  requestAnimationFrame(scrollLoop);
+}
+
+// Keep track of which keys are currently pressed
+const pressedKeys = new Set<string>();
+
+function initScrollZones() {
+  const zones = {
+    'scroll-left': { x: -1, y: 0 },
+    'scroll-right': { x: 1, y: 0 },
+    'scroll-up': { x: 0, y: -1 },
+    'scroll-down': { x: 0, y: 1 }
+  };
+
+  // Handle key presses
+  document.addEventListener('keydown', (event) => {
+    if (['w', 'a', 's', 'd'].includes(event.key)) {
+      pressedKeys.add(event.key);
+      updateScrollDirection();
+    }
+  });
+
+  // Handle key releases
+  document.addEventListener('keyup', (event) => {
+    if (['w', 'a', 's', 'd'].includes(event.key)) {
+      pressedKeys.delete(event.key);
+      updateScrollDirection();
+    }
+  });
+
+  // // Handle mouse scroll zones
+  // Object.entries(zones).forEach(([className, direction]) => {
+  //   const element = document.querySelector(`.${className}`);
+  //   if (element) {
+  //     element.addEventListener('mouseenter', () => {
+  //       scrollDirection = direction;
+  //     });
+
+  //     element.addEventListener('mouseleave', () => {
+  //       scrollDirection = { x: 0, y: 0 };
+  //     });
+  //   }
+  // });
+}
+
+function updateScrollDirection() {
+  // Reset scroll direction
+  scrollDirection = { x: 0, y: 0 };
+
+  // Update based on currently pressed keys
+  if (pressedKeys.has('w')) scrollDirection.y += -1;
+  if (pressedKeys.has('s')) scrollDirection.y += 1;
+  if (pressedKeys.has('a')) scrollDirection.x += -1;
+  if (pressedKeys.has('d')) scrollDirection.x += 1;
+
+  // Normalize diagonal movement (optional)
+  if (scrollDirection.x !== 0 && scrollDirection.y !== 0) {
+    const length = Math.sqrt(scrollDirection.x * scrollDirection.x + scrollDirection.y * scrollDirection.y);
+    scrollDirection.x /= length;
+    scrollDirection.y /= length;
   }
 }

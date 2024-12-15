@@ -18,6 +18,37 @@ export class GameState {
   private forageableTiles: Set<string> = new Set();
   private fellableTiles: Set<string> = new Set();
 
+  // Individual area visibility flags
+  private showFindableTiles: boolean = true;
+  private showForageableTiles: boolean = true;
+  private showFellableTiles: boolean = true;
+
+  // Visibility getters
+  public isShowingFindableTiles(): boolean {
+    return this.showFindableTiles;
+  }
+
+  public isShowingForageableTiles(): boolean {
+    return this.showForageableTiles;
+  }
+
+  public isShowingFellableTiles(): boolean {
+    return this.showFellableTiles;
+  }
+
+  // Visibility toggles
+  public toggleFindableTiles(): void {
+    this.showFindableTiles = !this.showFindableTiles;
+  }
+
+  public toggleForageableTiles(): void {
+    this.showForageableTiles = !this.showForageableTiles;
+  }
+
+  public toggleFellableTiles(): void {
+    this.showFellableTiles = !this.showFellableTiles;
+  }
+
   // Add a method to preload the spritesheet
   async loadSpritesheet(): Promise<HTMLImageElement> {
     if (this.spritesheetLoadPromise) {
@@ -150,6 +181,8 @@ export class GameState {
     this.map = [];
     
     console.log('Game state cleared');
+    this.resetVisibility();
+    this.clearAllMarkedTiles();
   }
 
   public generateInitialResources(): void {
@@ -204,19 +237,18 @@ export class GameState {
     this.findableTiles.add(`${x},${y}`);
   }
 
-  clearFindableTiles(): void {
-    this.findableTiles.clear();
-  }
-
-  isTileFindable(x: number, y: number): boolean {
-    return this.findableTiles.has(`${x},${y}`);
-  }
-
-  getFindableTiles(): Point[] {
+  // Modified get methods to respect visibility
+  public getFindableTiles(): Point[] {
+    if (!this.showFindableTiles) return [];
     return Array.from(this.findableTiles).map(coord => {
       const [x, y] = coord.split(',').map(Number);
       return { x, y };
     });
+  }
+
+  // Individual clear methods
+  public clearFindableTiles(): void {
+    this.findableTiles.clear();
   }
 
   // Add methods for forageable tiles
@@ -224,15 +256,14 @@ export class GameState {
     this.forageableTiles.add(`${x},${y}`);
   }
 
-  clearForageableTiles(): void {
+  // Individual clear methods
+  public clearForageableTiles(): void {
     this.forageableTiles.clear();
   }
 
-  isTileForageable(x: number, y: number): boolean {
-    return this.forageableTiles.has(`${x},${y}`);
-  }
-
-  getForageableTiles(): Point[] {
+  // Modified get methods to respect visibility
+  public getForageableTiles(): Point[] {
+    if (!this.showForageableTiles) return [];
     return Array.from(this.forageableTiles).map(coord => {
       const [x, y] = coord.split(',').map(Number);
       return { x, y };
@@ -245,26 +276,32 @@ export class GameState {
     this.fellableTiles.add(`${x},${y}`);
   }
 
-  clearFellableTiles(): void {
+  // Individual clear methods
+  public clearFellableTiles(): void {
     this.fellableTiles.clear();
   }
 
-  isTileFellable(x: number, y: number): boolean {
-    return this.fellableTiles.has(`${x},${y}`);
-  }
-
-  getFellableTiles(): Point[] {
+  // Modified get methods to respect visibility
+  public getFellableTiles(): Point[] {
+    if (!this.showFellableTiles) return [];
     return Array.from(this.fellableTiles).map(coord => {
       const [x, y] = coord.split(',').map(Number);
       return { x, y };
     });
   }
 
-  // Add method to clear all marked tiles
-  clearAllMarkedTiles(): void {
-    this.findableTiles.clear();
-    this.forageableTiles.clear();
-    this.fellableTiles.clear();11111
+  // Clear all marked tiles
+  public clearAllMarkedTiles(): void {
+    this.clearFindableTiles();
+    this.clearForageableTiles();
+    this.clearFellableTiles();
+  }
+
+  // Reset visibility states
+  public resetVisibility(): void {
+    this.showFindableTiles = true;
+    this.showForageableTiles = true;
+    this.showFellableTiles = true;
   }
 }
 

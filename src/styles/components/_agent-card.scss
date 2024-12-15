@@ -1,7 +1,7 @@
 .agent-card {
   background: rgba(0, 0, 0, 0.8);
-  border-radius: 8px;
-  padding: 1rem;
+  border-radius: 0px 8px 8px 0px;
+  padding: 0.5rem;
   margin-bottom: 0.5rem;
   box-shadow: 
     inset 0 0 15px rgba(255,255,255,0.1),
@@ -72,8 +72,8 @@
 
   .debug-info {
     display: none;
-    margin-top: 1rem;
-    padding-top: 1rem;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     opacity: 0;
     transform: translateY(-10px);
@@ -138,7 +138,7 @@
     }
 
     .inventory-container {
-      margin: 10px 0;
+      margin-top: 0.5rem;
       padding: 8px;
       background: rgba(255, 255, 255, 0.05);
       border-radius: 4px;
@@ -201,7 +201,13 @@
 }
 
 // Tile and Resource Info styles
-.tile-info,
+.tile-info {
+  color: #aaa;
+  font-size: 0.6rem;
+  margin-bottom: 0.2rem;
+  text-align: right;
+}
+
 .resource-info {
   background: rgba(0, 0, 0, 0.8);
   border-radius: 8px;

@@ -2,7 +2,6 @@ import { Agent } from '../Agent';
 import { InventoryItem } from '../types/InventoryItem';
 import { Point } from '../types/Point';
 import { TileType } from '../types/TileType';
-import { Resource } from '../Resource';
 import { ResourceType } from '../types/ResourceType';
 import { gameState, GameState } from '../state/GameState';
 import { getTilesInRadius } from '../utils/tileUtils';
@@ -10,7 +9,6 @@ import { getTilesInRadius } from '../utils/tileUtils';
 export const UIComponents = {
   createAgentCard(agent: Agent, index: number): string {
     const behaviorValue = agent.getBehavior();
-    const isDebugEnabled = false;
     
     return `
       <div class="agent-card" data-agent-index="${index}">
@@ -148,7 +146,7 @@ function createProgressBar(value: number, type: string, maxValue?: number): stri
   const style = maxValue && maxValue > 10 ? 'dotted' : 'segmented';
   return `
     <div class="stat-container">
-      <label>${type.charAt(0).toUpperCase() + type.slice(1)}</label>
+      ${isAmount ? '' :`<label>${type.charAt(0).toUpperCase() + type.slice(1)}</label>`}
       <div class="progress-bar ${type}" ${maxValue ? `style="--max-segments: ${maxValue}"` : ''} ${isAmount ? `data-style="${style}"` : ''}>
         <div class="bar ${type}" style="width: ${percentage}%"></div>
       </div>
@@ -177,6 +175,21 @@ function renderInventory(inventory: (InventoryItem | null)[]): string {
   `;
 }
 
+export function initHoverInfo() {
+  const hoverContainer = document.createElement('div');
+  hoverContainer.className = 'hover-info-container';
+  document.body.appendChild(hoverContainer);
+}
+
+export function updateHoverInfo(hoverContainer: HTMLElement, selectedTile: Point | null, gameState: GameState) {
+  if (!hoverContainer || !selectedTile || !gameState) return;
+
+  const tile = gameState.getTileAt(selectedTile.x, selectedTile.y);
+  hoverContainer.innerHTML = `
+    <p class="tile-info">${TileType[tile]} (${selectedTile.x}, ${selectedTile.y})</p>
+  `;
+}
+
 export function initSelectedTilePanel() {
   const uiContainer = document.querySelector('.ui');
   if (!uiContainer) return;
@@ -185,23 +198,25 @@ export function initSelectedTilePanel() {
   const selectedTilePanel = document.createElement('div');
   selectedTilePanel.className = 'selected-tile-panel';
   selectedTilePanel.innerHTML = `
-    <h3>Selected Tile</h3>
-    <div class="selected-tile-content"></div>
+    <div class="selected-tile-content">
+    </div>
   `;
-  
+
+  selectedTilePanel.style.display = 'none';
   uiContainer.appendChild(selectedTilePanel);
 }
 
 export function updateSelectedTilePanel(selectedTile: Point | null, gameState: GameState) {
   const selectedTileContent = document.querySelector('.selected-tile-content');
-  if (!selectedTileContent) return;
+  const selectedTilePanel = document.querySelector('.selected-tile-panel');
+  if (!selectedTileContent || !selectedTilePanel) return;
 
   if (!selectedTile) {
-    selectedTileContent.innerHTML = '<p>No tile selected</p>';
+    if (selectedTilePanel) {
+      (selectedTilePanel as HTMLElement).style.display = 'none';
+    }
     return;
   }
-
-  const tile = gameState.getTileAt(selectedTile.x, selectedTile.y);
   
   // Get resources at the selected tile
   const resourcesAtTile = gameState.getResources().filter(resource => {
@@ -209,14 +224,23 @@ export function updateSelectedTilePanel(selectedTile: Point | null, gameState: G
     return pos.x === selectedTile.x && pos.y === selectedTile.y;
   });
 
+  if (resourcesAtTile.length === 0) {
+    if (selectedTilePanel) {
+      (selectedTilePanel as HTMLElement).style.display = 'none';
+    }
+    return;
+  }
+
+  (selectedTilePanel as HTMLElement).style.display = 'block';
+
   let resourcesHtml = '';
   if (resourcesAtTile.length > 0) {
     resourcesHtml = `
       <div class="resources-info">
-        <h4>Resources</h4>
+        ${resourcesAtTile.length === 0 ? '<p>No resources at this tile</p>' : ''}
         ${resourcesAtTile.map(resource => `
           <div class="resource-item">
-            <span class="resource-type">${ResourceType[resource.getType()]}</span>
+            <div class="resource-type">${ResourceType[resource.getType()]} </div>
             <div class="resource-amount">
               ${createProgressBar(
                 resource.getAmount(),
@@ -231,8 +255,6 @@ export function updateSelectedTilePanel(selectedTile: Point | null, gameState: G
   }
 
   selectedTileContent.innerHTML = `
-    <p>Position: (${selectedTile.x}, ${selectedTile.y})</p>
-    <p>Type: ${TileType[tile]}</p>
     ${resourcesHtml}
   `;
 }
@@ -241,23 +263,26 @@ export function initActionPanel() {
   const uiContainer = document.querySelector('.ui');
   if (!uiContainer) return;
 
-  // Create action panel with toggle buttons
   const actionPanel = document.createElement('div');
   actionPanel.className = 'action-panel';
   actionPanel.innerHTML = `
     <div class="action-group">
-      <button class="action-button find-button">Find in Area (1-5)</button>
       <button class="toggle-button find-toggle" data-active="true">👁</button>
+      <button class="action-button find-button">Find</button>
+      <button class="toggle-button find-clear">✕</button>
     </div>
     <div class="action-group">
-    <button class="action-button forage-button">Forage in Area</button>
-    <button class="toggle-button forage-toggle" data-active="true">👁</button>
+      <button class="toggle-button forage-toggle" data-active="true">👁</button>
+      <button class="action-button forage-button">Forage</button>
+      <button class="toggle-button forage-clear">✕</button>
     </div>
     <div class="action-group">
-      <button class="action-button fell-button">Fell in Area</button>
       <button class="toggle-button fell-toggle" data-active="true">👁</button>
+      <button class="action-button fell-button">Fell</button>
+      <button class="toggle-button fell-clear">✕</button>
     </div>
-    <button class="action-button clear-button">Clear All Areas (C)</button>
+    <div class="separator"></div>
+    <button class="action-button clear-all-button">Clear All (C)</button>
   `;
   
   uiContainer.appendChild(actionPanel);
@@ -274,21 +299,20 @@ export function initActionPanel() {
 
   findToggle?.addEventListener('click', () => {
     const button = findToggle as HTMLButtonElement;
-    window.DEBUG.showFindableTiles = !window.DEBUG.showFindableTiles;
-    button.dataset.active = window.DEBUG.showFindableTiles.toString();
+    gameState.toggleFindableTiles();
+    button.dataset.active = gameState.isShowingFindableTiles().toString();
   });
 
   forageToggle?.addEventListener('click', () => {
     const button = forageToggle as HTMLButtonElement;
-    window.DEBUG.showForageableTiles = !window.DEBUG.showForageableTiles;
-    button.dataset.active = window.DEBUG.showForageableTiles.toString();
+    gameState.toggleForageableTiles();
+    button.dataset.active = gameState.isShowingForageableTiles().toString();
   });
 
   fellToggle?.addEventListener('click', () => {
-    console.log('Fell toggle clicked');
     const button = fellToggle as HTMLButtonElement;
-    window.DEBUG.showFellableTiles = !window.DEBUG.showFellableTiles;
-    button.dataset.active = window.DEBUG.showFellableTiles.toString();
+    gameState.toggleFellableTiles();
+    button.dataset.active = gameState.isShowingFellableTiles().toString();
   });
 
   // Add click handlers
@@ -305,6 +329,14 @@ export function initActionPanel() {
       const tilesInRadius = getTilesInRadius(selectedTile, 8, gameState);
       tilesInRadius.forEach(tile => {
         gameState.markTileAsFindable(tile.x, tile.y);
+        // ensure findable tiles are visible
+        if (!gameState.isShowingFindableTiles()) {
+          gameState.toggleFindableTiles();
+          // set toggle button to active
+          if (findToggle) {
+            (findToggle as HTMLButtonElement).dataset.active = 'true';
+          }
+        }
       });
     });
   }
@@ -317,6 +349,14 @@ export function initActionPanel() {
       const tilesInRadius = getTilesInRadius(selectedTile, 5, gameState);
       tilesInRadius.forEach(tile => {
         gameState.markTileAsForageable(tile.x, tile.y);
+        // ensure forageable tiles are visible
+        if (!gameState.isShowingForageableTiles()) {
+          gameState.toggleForageableTiles();
+          // set toggle button to active
+          if (forageToggle) {
+            (forageToggle as HTMLButtonElement).dataset.active = 'true';
+          }
+        }
       });
     });
   }
@@ -324,12 +364,19 @@ export function initActionPanel() {
   if (fellButton) {
     fellButton.addEventListener('click', () => {
       const selectedTile = gameState.getSelectedTile();
-      console.log('Fell button clicked');
       if (!selectedTile) return;
 
       const tilesInRadius = getTilesInRadius(selectedTile, 5, gameState);
       tilesInRadius.forEach(tile => {
         gameState.markTileAsFellable(tile.x, tile.y);
+        // ensure fellable tiles are visible
+        if (!gameState.isShowingFellableTiles()) {
+          gameState.toggleFellableTiles();
+          // set toggle button to active
+          if (fellToggle) {
+            (fellToggle as HTMLButtonElement).dataset.active = 'true';
+          }
+        }
       });
     });
   }
@@ -349,17 +396,34 @@ export function initActionPanel() {
 
     switch (e.key) {
       case '1':
-        findButton?.click();
+        (findButton as HTMLButtonElement).click();
         break;
       case '2':
-        forageButton?.click();
+        (forageButton as HTMLButtonElement).click();
         break;
       case '3':
-        fellButton?.click();
+        (fellButton as HTMLButtonElement).click();
         break;
       case 'c':
-        clearButton?.click();
+        (clearButton as HTMLButtonElement).click();
         break;
     }
+  });
+
+  // Update clear button handlers
+  const findClear = actionPanel.querySelector('.find-clear');
+  const forageClear = actionPanel.querySelector('.forage-clear');
+  const fellClear = actionPanel.querySelector('.fell-clear');
+
+  findClear?.addEventListener('click', () => {
+    gameState.clearFindableTiles();
+  });
+
+  forageClear?.addEventListener('click', () => {
+    gameState.clearForageableTiles();
+  });
+
+  fellClear?.addEventListener('click', () => {
+    gameState.clearFellableTiles();
   });
 }
