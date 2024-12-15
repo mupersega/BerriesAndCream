@@ -4,7 +4,7 @@ import { Point } from '../types/Point';
 import { TileType } from '../types/TileType';
 import { Resource } from '../Resource';
 import { ResourceType } from '../types/ResourceType';
-import { GameState } from '../state/GameState';
+import { gameState, GameState } from '../state/GameState';
 import { getTilesInRadius } from '../utils/tileUtils';
 
 export const UIComponents = {
@@ -19,7 +19,6 @@ export const UIComponents = {
           <div class="behavior-controls">
             <select class="behavior-select" data-agent-index="${index}">
               <option value="Idle" ${behaviorValue === 'Idle' ? 'selected' : ''}>Idle</option>
-              <option value="Explore" ${behaviorValue === 'Explore' ? 'selected' : ''}>Explore</option>
               <option value="Forage" ${behaviorValue === 'Forage' ? 'selected' : ''}>Forage</option>
               <option value="Fell" ${behaviorValue === 'Fell' ? 'selected' : ''}>Fell</option>
             </select>
@@ -251,8 +250,12 @@ export function initActionPanel() {
       <button class="toggle-button find-toggle" data-active="true">👁</button>
     </div>
     <div class="action-group">
-      <button class="action-button forage-button">Forage in Area</button>
-      <button class="toggle-button forage-toggle" data-active="true">👁</button>
+    <button class="action-button forage-button">Forage in Area</button>
+    <button class="toggle-button forage-toggle" data-active="true">👁</button>
+    </div>
+    <div class="action-group">
+      <button class="action-button fell-button">Fell in Area</button>
+      <button class="toggle-button fell-toggle" data-active="true">👁</button>
     </div>
     <button class="action-button clear-button">Clear All Areas (C)</button>
   `;
@@ -262,10 +265,12 @@ export function initActionPanel() {
   // Add visibility state to window.DEBUG
   window.DEBUG.showFindableTiles = true;
   window.DEBUG.showForageableTiles = true;
+  window.DEBUG.showFellableTiles = true;
 
   // Add click handlers for toggles
   const findToggle = actionPanel.querySelector('.find-toggle');
   const forageToggle = actionPanel.querySelector('.forage-toggle');
+  const fellToggle = actionPanel.querySelector('.fell-toggle');
 
   findToggle?.addEventListener('click', () => {
     const button = findToggle as HTMLButtonElement;
@@ -279,9 +284,17 @@ export function initActionPanel() {
     button.dataset.active = window.DEBUG.showForageableTiles.toString();
   });
 
+  fellToggle?.addEventListener('click', () => {
+    console.log('Fell toggle clicked');
+    const button = fellToggle as HTMLButtonElement;
+    window.DEBUG.showFellableTiles = !window.DEBUG.showFellableTiles;
+    button.dataset.active = window.DEBUG.showFellableTiles.toString();
+  });
+
   // Add click handlers
   const findButton = actionPanel.querySelector('.find-button');
   const forageButton = actionPanel.querySelector('.forage-button');
+  const fellButton = actionPanel.querySelector('.fell-button');
   const clearButton = actionPanel.querySelector('.clear-button');
 
   if (findButton) {
@@ -308,6 +321,19 @@ export function initActionPanel() {
     });
   }
 
+  if (fellButton) {
+    fellButton.addEventListener('click', () => {
+      const selectedTile = gameState.getSelectedTile();
+      console.log('Fell button clicked');
+      if (!selectedTile) return;
+
+      const tilesInRadius = getTilesInRadius(selectedTile, 5, gameState);
+      tilesInRadius.forEach(tile => {
+        gameState.markTileAsFellable(tile.x, tile.y);
+      });
+    });
+  }
+
   if (clearButton) {
     clearButton.addEventListener('click', () => {
       gameState.clearAllMarkedTiles();
@@ -327,6 +353,9 @@ export function initActionPanel() {
         break;
       case '2':
         forageButton?.click();
+        break;
+      case '3':
+        fellButton?.click();
         break;
       case 'c':
         clearButton?.click();

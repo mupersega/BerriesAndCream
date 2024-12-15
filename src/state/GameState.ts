@@ -16,6 +16,7 @@ export class GameState {
   private selectedTile: Point | null = null;
   private findableTiles: Set<string> = new Set();
   private forageableTiles: Set<string> = new Set();
+  private fellableTiles: Set<string> = new Set();
 
   // Add a method to preload the spritesheet
   async loadSpritesheet(): Promise<HTMLImageElement> {
@@ -238,10 +239,32 @@ export class GameState {
     });
   }
 
+  // fell tiles
+  markTileAsFellable(x: number, y: number): void {
+    console.log('Marking tile as fellable:', x, y);
+    this.fellableTiles.add(`${x},${y}`);
+  }
+
+  clearFellableTiles(): void {
+    this.fellableTiles.clear();
+  }
+
+  isTileFellable(x: number, y: number): boolean {
+    return this.fellableTiles.has(`${x},${y}`);
+  }
+
+  getFellableTiles(): Point[] {
+    return Array.from(this.fellableTiles).map(coord => {
+      const [x, y] = coord.split(',').map(Number);
+      return { x, y };
+    });
+  }
+
   // Add method to clear all marked tiles
   clearAllMarkedTiles(): void {
     this.findableTiles.clear();
     this.forageableTiles.clear();
+    this.fellableTiles.clear();11111
   }
 }
 

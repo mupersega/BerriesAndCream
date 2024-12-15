@@ -1,7 +1,6 @@
 import { TileType } from './types/TileType';
 import { Resource } from './Resource';
 import { BehaviorManager } from './behaviors/BehaviorManager';
-import { AgentRole } from './types/AgentRole';
 import { InventoryItem } from './types/InventoryItem';
 import { Point } from './types/Point';
 import { ResourceType } from './types/ResourceType';
@@ -43,7 +42,6 @@ export class Agent implements BehaviorEntity, IDrawable {
   private readonly BOUNCE_HEIGHT = 5;
   private readonly BOUNCE_SQUASH = 0.05;
   private isMoving: boolean = false;
-  private role: AgentRole = AgentRole.Idle;
 
   // Inventory system
   private readonly INVENTORY_SIZE = 10;
@@ -69,7 +67,6 @@ export class Agent implements BehaviorEntity, IDrawable {
     
     this.currentHealth = this.maxHealth;
     this.behaviorManager = new BehaviorManager(resources, 'agent');
-    this.role = AgentRole.Scout;
     this.inventory = new Array(this.INVENTORY_SIZE).fill(null);
   }
 
@@ -506,19 +503,6 @@ export class Agent implements BehaviorEntity, IDrawable {
 
   public getCurrentPath(): {x: number, y: number}[] {
     return this.currentPath;
-  }
-
-
-  public setRole(newRole: AgentRole): void {
-    if (this.role !== newRole) {
-      this.role = newRole;
-      this.clearTarget();  // Clear current target when role changes
-      console.log(`Agent role changed to ${AgentRole[newRole]}`);
-    }
-  }
-
-  public getRole(): AgentRole {
-    return this.role;
   }
 
   // New inventory management methods

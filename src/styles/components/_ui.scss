@@ -216,6 +216,14 @@
       }
     }
 
+    &.fell-button {
+      background: #7f8c8d;
+      
+      &:hover {
+        background: #95a5a6;
+      }
+    }
+
     &.clear-button {
       background: #7f8c8d;
       
@@ -273,6 +281,14 @@
       
       &:hover {
         background: #e67e22;
+      }
+    }
+
+    &.fell-button {
+      background: #4d3d39;
+      
+      &:hover {
+        background: #6d5d59;
       }
     }
 

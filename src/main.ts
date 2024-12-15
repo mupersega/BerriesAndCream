@@ -375,7 +375,9 @@ let hoveredResource: Resource | null = null;
 
 // Add at the top with other globals
 interface DebugFlags {
-  showExploredTiles: boolean;
+  showFindableTiles: boolean;
+  showForageableTiles: boolean;
+  showFellableTiles: boolean;
   isPaused: boolean;
   agentDebug: boolean[];
   toggleAgentDebug: (index: number) => void;
@@ -383,7 +385,6 @@ interface DebugFlags {
 
 // Make DEBUG globally accessible
 window.DEBUG = {
-  showExploredTiles: true,
   isPaused: false,
   agentDebug: [],
   toggleAgentDebug: (index: number) => {
@@ -1305,6 +1306,31 @@ function drawTileOverlays(ctx: CanvasRenderingContext2D) {
   
   // Fill all forageable tiles at once
   ctx.fillStyle = 'rgba(255, 165, 0, 0.3)';
+  ctx.fill();
+
+  // Start new path for fellable tiles
+  ctx.beginPath();
+
+  // Draw fellable tiles
+  if (window.DEBUG.showFellableTiles) {
+    gameState.getFellableTiles().forEach(tile => {
+      const tileType = gameState.getTileAt(tile.x, tile.y);
+      const heightFactor = getTileHeightFactor(tileType);
+      const verticalOffset = heightFactor * tileSize;
+      
+      const isoX = (tile.x - tile.y) * tileSize;
+      const isoY = (tile.x + tile.y) * (tileSize/2) - verticalOffset;
+      
+      ctx.moveTo(isoX, isoY);
+      ctx.lineTo(isoX + tileSize, isoY + tileSize/2);
+      ctx.lineTo(isoX, isoY + tileSize);
+      ctx.lineTo(isoX - tileSize, isoY + tileSize/2);
+      ctx.closePath();
+    });
+  }
+
+  // Fill all fellable tiles at once
+  ctx.fillStyle = 'rgba(128, 128, 128, 0.3)';
   ctx.fill();
 }
 

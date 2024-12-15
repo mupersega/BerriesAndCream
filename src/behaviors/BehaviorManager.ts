@@ -2,20 +2,16 @@ import { BehaviorEntity } from './BehaviorEntity';
 import { Agent } from '../Agent';
 import { AgentBehavior } from './AgentBehavior';
 import { ForageBehavior } from './ForageBehavior';
-import { ChartBehavior } from './ChartBehavior';
 import { IdleBehavior } from './IdleBehavior';
 import { FellBehavior } from './FellBehavior';
-import { BuildBehavior } from './BuildBehavior';
 import { FlushBehavior } from './FlushBehavior';
 
 import { Resource } from '../Resource';
 
 export class BehaviorManager {
   private forageBehavior: ForageBehavior;
-  private chartBehavior: ChartBehavior;
   private idleBehavior: IdleBehavior;
   private fellBehavior: FellBehavior;
-  private buildBehavior: BuildBehavior;
   private flushBehavior: FlushBehavior;
   private currentBehavior: AgentBehavior | null = null;
   private selectedBehavior: string = 'Idle';
@@ -24,10 +20,8 @@ export class BehaviorManager {
   constructor(resources: Resource[], entityType: 'agent' | 'creature' = 'agent') {
     this.entityType = entityType;
     this.forageBehavior = new ForageBehavior();
-    this.chartBehavior = new ChartBehavior(resources);
     this.idleBehavior = new IdleBehavior();
     this.fellBehavior = new FellBehavior();
-    this.buildBehavior = new BuildBehavior();
     this.flushBehavior = new FlushBehavior();
   }
 
@@ -65,8 +59,6 @@ export class BehaviorManager {
     switch (name) {
       case 'Forage':
         return this.forageBehavior;
-      case 'Explore':
-        return this.chartBehavior;
       case 'Fell':
         return this.fellBehavior;
       case 'Idle':
