@@ -461,7 +461,7 @@ function generateNewMap() {
   // Generate initial game entities
   gameState.generateInitialResources();
   gameState.generateInitialStructures();
-  gameState.generateInitialAgents(10);
+  gameState.generateInitialAgents(2);
   
   // Reinitialize UI and render
   initInfoPanel(gameState.getAgents());
@@ -549,7 +549,7 @@ async function initMap() {
   // Create info panel
   const infoPanel = document.createElement('div');
   infoPanel.id = 'infoPanel';
-  document.querySelector('.styles')?.appendChild(infoPanel);
+  document.querySelector('.ui')?.appendChild(infoPanel);
 
   // Add canvases to DOM
   document.getElementById('app')?.appendChild(backgroundCanvas);

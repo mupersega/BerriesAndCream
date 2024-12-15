@@ -4,6 +4,7 @@ import { Structure } from '../Structure';
 import { TileType } from '../types/TileType';
 import { StructureType } from '../types/StructureType';
 import { findSuitableBuildingLocation } from '../utils/locationUtils';
+import { Point } from '../types/Point';
 
 export class GameState {
   protected map: TileType[][] = [];
@@ -12,6 +13,7 @@ export class GameState {
   private agents: Agent[] = [];
   private spritesheet: HTMLImageElement | null = null;
   private spritesheetLoadPromise: Promise<HTMLImageElement> | null = null;
+  private selectedTile: Point | null = null;
 
   // Add a method to preload the spritesheet
   async loadSpritesheet(): Promise<HTMLImageElement> {
@@ -175,7 +177,7 @@ export class GameState {
     });
   }
 
-  public generateInitialAgents(numAgents: number = 10): void {
+  public generateInitialAgents(numAgents: number = 2): void {
     // Clear existing agents
     this.agents.forEach(agent => agent.cleanup?.());
     this.agents = [];
@@ -183,6 +185,15 @@ export class GameState {
     // Generate new agents
     const newAgents = Agent.generateAgents(this.map, this.resources, numAgents);
     newAgents.forEach(agent => this.addAgent(agent));
+  }
+
+  // Add getter and setter for selected tile
+  getSelectedTile(): Point | null {
+    return this.selectedTile;
+  }
+
+  setSelectedTile(point: Point | null): void {
+    this.selectedTile = point;
   }
 }
 

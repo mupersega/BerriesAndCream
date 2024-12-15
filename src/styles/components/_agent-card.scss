@@ -2,7 +2,7 @@
   background: rgba(0, 0, 0, 0.8);
   border-radius: 8px;
   padding: 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
   box-shadow: 
     inset 0 0 15px rgba(255,255,255,0.1),
     0 4px 8px rgba(0,0,0,0.2);
@@ -11,7 +11,6 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1rem;
     
     h4 {
       color: #fff;
@@ -60,16 +59,38 @@
       cursor: pointer;
       font-size: 0.8rem;
       padding: 0.2rem 0.4rem;
-      transition: color 0.2s;
+      transition: all 0.2s ease;
       flex-shrink: 0;
+      height: 24px;
+      width: 24px;
       
       &:hover {
         color: #7ab6ff;
       }
     }
   }
-  
-  .agent-stats {
+
+  .debug-info {
+    display: none;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+    
+    &.show {
+      display: block;
+      opacity: 1;
+      transform: scale(1);
+      transform: translateY(0);
+      @starting-style {
+        opacity: 0;
+        transform: scale(0);
+        transform: translateY(-10px);
+      }
+    }
+
     .stat-container {
       margin-bottom: 0.5rem;
       
@@ -115,129 +136,60 @@
         }
       }
     }
-  }
-  
-  .status-warning {
-    background: #e74c3c;
-    color: white;
-    padding: 0.3rem 0.6rem;
-    border-radius: 4px;
-    font-size: 0.6rem;
-    text-align: center;
-    margin: 0.5rem 0;
-    animation: pulse 2s infinite;
-  }
-  
-  .path-info {
-    margin-top: 0.8rem;
-    padding: 0.5rem;
-    background: rgba(255,255,255,0.05);
-    border-radius: 4px;
-    
-    h5 {
-      color: #aaa;
-      font-size: 0.6rem;
-      margin-bottom: 0.3rem;
-    }
-    
-    .path-points {
-      color: #fff;
-      font-size: 0.5rem;
-      font-family: monospace;
-      white-space: nowrap;
-      overflow-x: auto;
-      padding-bottom: 0.3rem;
-      
-      &::-webkit-scrollbar {
-        height: 2px;
+
+    .inventory-container {
+      margin: 10px 0;
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 4px;
+      transition: all 0.3s ease;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.08);
       }
-      
-      &::-webkit-scrollbar-track {
-        background: rgba(255,255,255,0.1);
-      }
-      
-      &::-webkit-scrollbar-thumb {
-        background: rgba(255,255,255,0.3);
+
+      h5 {
+        margin: 0 0 5px 0;
+        font-size: 0.7rem;
+        color: #aaa;
       }
     }
-  }
-  
-  .known-resources {
-    margin-top: 0.8rem;
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 4px;
-    padding: 8px;
-    
-    h5 {
-      color: #aaa;
-      font-size: 0.7rem;
-      margin-bottom: 0.5rem;
+
+    .inventory-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 4px;
     }
-    
-    .resource-list {
-      max-height: 120px;
-      overflow-y: auto;
-      
-      .resource-group {
-        margin-bottom: 8px;
-        
-        &:last-child {
-          margin-bottom: 0;
-        }
-        
-        .resource-type {
-          color: #4a90e2;
-          font-size: 0.65rem;
-          font-weight: bold;
-          margin-bottom: 4px;
-        }
-        
-        .resource-entry {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 2px 4px;
-          border-radius: 2px;
-          font-size: 0.6rem;
-          
-          &:hover {
-            background: rgba(255,255,255,0.1);
-          }
-          
-          .resource-location {
-            color: #ddd;
-            font-family: monospace;
-          }
-          
-          .resource-amount {
-            color: #2ecc71;
-            font-family: monospace;
-          }
-        }
+
+    .inventory-slot {
+      aspect-ratio: 1;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      position: relative;
+      transition: all 0.2s ease;
+
+      &:hover {
+        border-color: rgba(255, 255, 255, 0.3);
+        transform: scale(1.05);
       }
-      
-      &::-webkit-scrollbar {
-        width: 4px;
+
+      &.empty {
+        background: rgba(0, 0, 0, 0.1);
       }
-      
-      &::-webkit-scrollbar-track {
-        background: rgba(255,255,255,0.1);
-      }
-      
-      &::-webkit-scrollbar-thumb {
-        background: rgba(255,255,255,0.3);
+
+      &.filled {
+        background: rgba(255, 255, 255, 0.05);
       }
     }
-  }
-  
-  .debug-info {
-    display: none;
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    
-    &.show {
-      display: block;
+
+    .path-info,
+    .known-resources {
+      transition: all 0.3s ease;
+      
+      &:hover {
+        background: rgba(255, 255, 255, 0.08);
+      }
     }
   }
 }
@@ -275,41 +227,6 @@
         font-family: monospace;
       }
     }
-  }
-}
-
-.inventory-container {
-  margin-top: 10px;
-  padding: 5px;
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 4px;
-
-  h5 {
-    margin: 0 0 5px 0;
-    font-size: 0.9em;
-    color: #ccc;
-  }
-}
-
-.inventory-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 2px;
-}
-
-.inventory-slot {
-  aspect-ratio: 1;
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  position: relative;
-
-  &.empty {
-    background: rgba(0, 0, 0, 0.1);
-  }
-
-  &.filled {
-    background: rgba(255, 255, 255, 0.05);
   }
 }
 

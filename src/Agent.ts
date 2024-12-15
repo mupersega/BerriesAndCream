@@ -177,12 +177,6 @@ export class Agent implements BehaviorEntity, IDrawable {
     const scaleY = this.isMoving ? 
       1 - ((1 - bounceProgress) * this.BOUNCE_SQUASH) : 1;
 
-    console.log('Agent bounce:', {
-      isMoving: this.isMoving,
-      animationTime: this.animationTime,
-      bounceOffset: bounceOffset
-    });
-
     // Draw shadow
     this.drawShadow(ctx, screenX, screenY);
 
@@ -485,14 +479,6 @@ export class Agent implements BehaviorEntity, IDrawable {
     return validResources;
   }
 
-  public getKnownBerries(): Resource[] {
-    return this.getKnownResources().filter(resource => resource.getType() === ResourceType.Berry);
-  }
-
-  public getKnownWells(): Resource[] {
-    return this.getKnownResources().filter(resource => resource.getType() === ResourceType.Well);
-  }
-
   public addExploredTile(x: number, y: number): void {
     this.exploredTiles.add(`${Math.round(x)},${Math.round(y)}`);
   }
@@ -521,12 +507,6 @@ export class Agent implements BehaviorEntity, IDrawable {
     return this.currentPath;
   }
 
-  private ensurePathToTarget(): void {
-    if (this.target && !this.hasPath()) {
-        // console.log(`[Agent] Target exists but no path, recalculating path...`);
-        this.setTarget(this.target.x, this.target.y);  // This will recalculate the path
-    }
-  }
 
   public setRole(newRole: AgentRole): void {
     if (this.role !== newRole) {
@@ -668,121 +648,12 @@ export class Agent implements BehaviorEntity, IDrawable {
     });
   }
 
-  public initializeUI(index: number): void {
-    const agentContainer = document.querySelector('.agent-container');
-    if (!agentContainer) return;
-
-    // Create card element
-    const card = document.createElement('div');
-    card.className = 'agent-card';
-    card.dataset.agentIndex = index.toString();
-    
-    // Set initial HTML
-    card.innerHTML = `
-        <header class="agent-header">
-            <h4>Agent ${index + 1}</h4>
-            <div class="behavior-controls">
-                <select class="behavior-select" data-agent-index="${index}">
-                    <option value="Idle" ${this.currentBehavior === 'Idle' ? 'selected' : ''}>Idle</option>
-                    <option value="Explore" ${this.currentBehavior === 'Explore' ? 'selected' : ''}>Explore</option>
-                    <option value="Forage" ${this.currentBehavior === 'Forage' ? 'selected' : ''}>Forage</option>
-                </select>
-            </div>
-            <button class="debug-toggle">${window.DEBUG.agentDebug[index] ? '▼' : '▶'}</button>
-        </header>
-        <div class="agent-stats">
-            ${createProgressBar(this.getHealth(), 'health')}
-            ${renderInventory(this.getInventory())}
-            ${this.isStuck() ? '<div class="status-warning">STUCK!</div>' : ''}
-        </div>
-        <div class="debug-info ${window.DEBUG.agentDebug[index] ? 'show' : ''}">
-            ${renderPath(this.getCurrentPath())}
-            ${renderKnownResources(this.getKnownResources())}
-        </div>
-    `;
-
-    // Add event listeners
-    const select = card.querySelector('.behavior-select') as HTMLSelectElement;
-    if (select) {
-        select.addEventListener('change', (e) => {
-            const target = e.target as HTMLSelectElement;
-            const newBehavior = target.value;
-            console.log('[Agent UI] Behavior change requested:', { index, newBehavior });
-            this.setBehavior(newBehavior);
-        });
-    }
-
-    const debugToggle = card.querySelector('.debug-toggle');
-    if (debugToggle) {
-        debugToggle.addEventListener('click', () => {
-            window.DEBUG.toggleAgentDebug(index);
-        });
-    }
-
-    // Add card to container
-    agentContainer.appendChild(card);
-  }
-
   // Add this method for debugging
   public debugKnownResources(): void {
     console.log('[Agent] Known Resources:');
     this.getKnownResources().forEach(resource => {
       const pos = resource.getPosition();
       console.log(`- ${ResourceType[resource.getType()]} at (${pos.x}, ${pos.y}), amount: ${resource.getAmount()}`);
-    });
-  }
-
-  private findPathToTarget(
-    agent: Agent, 
-    target: {x: number, y: number}
-  ): {x: number, y: number}[] | null {
-    const pos = agent.getPosition();
-    const start = {
-      x: Math.floor(pos.x),
-      y: Math.floor(pos.y)
-    };
-    
-    return this.pathfinder.findPath(
-      start,
-      target,
-      (x, y) => {
-        const tile = agent.getMap()[y][x];
-        return tile !== TileType.Water && 
-               tile !== TileType.DeepWater && 
-               tile !== TileType.Stone && 
-               tile !== TileType.Snow;
-      },
-      agent.getMap()[0].length,
-      agent.getMap().length
-    );
-  }
-
-  private isValidTarget(agent: Agent, x: number, y: number): boolean {
-    const tile = agent.getMap()[y][x];
-    if (agent.hasExploredTile(x, y) || 
-        tile === TileType.Water || 
-        tile === TileType.DeepWater ||
-        tile === TileType.Stone ||
-        tile === TileType.Snow) {
-      return false;
-    }
-    
-    const directions = [
-      {x: 1, y: 0}, {x: -1, y: 0},
-      {x: 0, y: 1}, {x: 0, y: -1},
-      {x: 1, y: 1}, {x: -1, y: 1},
-      {x: 1, y: -1}, {x: -1, y: -1}
-    ];
-    
-    return directions.some(dir => {
-      const nx = x + dir.x;
-      const ny = y + dir.y;
-      const neighborTile = agent.getMap()[ny][nx];
-      return neighborTile !== TileType.Water && 
-             neighborTile !== TileType.DeepWater &&
-             neighborTile !== TileType.Stone &&
-             neighborTile !== TileType.Snow &&
-             agent.hasExploredTile(nx, ny);
     });
   }
 
@@ -793,7 +664,6 @@ export class Agent implements BehaviorEntity, IDrawable {
     for (let i = 0; i < count; i++) {
       // Create new agent with random valid position
       const agent = new Agent(map, resources);
-      agent.initializeUI(i);
       agents.push(agent);
     }
 

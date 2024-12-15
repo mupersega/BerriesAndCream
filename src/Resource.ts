@@ -67,7 +67,7 @@ export const RESOURCE_CONFIGS: Record<ResourceType, ResourceConfig> = {
       height: 16
     },
     anchorBottom: false,
-    verticalOffset: 8,
+    verticalOffset: -6,
   },
   [ResourceType.BerryTree]: {
     maxQuantity: 80,
@@ -85,7 +85,7 @@ export const RESOURCE_CONFIGS: Record<ResourceType, ResourceConfig> = {
       height: 64
     },
     anchorBottom: true,
-    verticalOffset: 4,
+    verticalOffset: -6,
   },
   [ResourceType.Corpse]: {
     maxQuantity: 50,
@@ -123,7 +123,7 @@ export const RESOURCE_CONFIGS: Record<ResourceType, ResourceConfig> = {
       height: 64
     },
     anchorBottom: true,
-    verticalOffset: 4,
+    verticalOffset: -6,
   }
 };
 
