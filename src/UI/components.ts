@@ -2,6 +2,9 @@ import { Agent } from '../Agent';
 import { InventoryItem } from '../types/InventoryItem';
 import { Point } from '../types/Point';
 import { TileType } from '../types/TileType';
+import { Resource } from '../Resource';
+import { ResourceType } from '../types/ResourceType';
+import { GameState } from '../state/GameState';
 
 export const UIComponents = {
   createAgentCard(agent: Agent, index: number): string {
@@ -134,15 +137,17 @@ export function initInfoPanel(agents: Agent[]) {
 }
 
 // Keep the helper functions
-function createProgressBar(value: number, type: string): string {
-  const percentage = Math.round(value);
+function createProgressBar(value: number, type: string, maxValue?: number): string {
+  const percentage = Math.round((value / (maxValue || 100)) * 100);
+  const isAmount = type === 'amount';
+  const style = maxValue && maxValue > 10 ? 'dotted' : 'segmented';
   return `
     <div class="stat-container">
       <label>${type.charAt(0).toUpperCase() + type.slice(1)}</label>
-      <div class="progress-bar ${type}">
-        <div class="bar" style="width: ${percentage}%"></div>
-        <span class="value">${percentage}%</span>
+      <div class="progress-bar ${type}" ${maxValue ? `style="--max-segments: ${maxValue}"` : ''} ${isAmount ? `data-style="${style}"` : ''}>
+        <div class="bar ${type}" style="width: ${percentage}%"></div>
       </div>
+      <span class="value">${isAmount ? `${value}/${maxValue}` : percentage + '%'}</span>
     </div>
   `;
 }
@@ -192,11 +197,37 @@ export function updateSelectedTilePanel(selectedTile: Point | null, gameState: G
   }
 
   const tile = gameState.getTileAt(selectedTile.x, selectedTile.y);
-  const height = window.noise?.getValue(selectedTile.x, selectedTile.y) ?? 0;
+  
+  // Get resources at the selected tile
+  const resourcesAtTile = gameState.getResources().filter(resource => {
+    const pos = resource.getPosition();
+    return pos.x === selectedTile.x && pos.y === selectedTile.y;
+  });
+
+  let resourcesHtml = '';
+  if (resourcesAtTile.length > 0) {
+    resourcesHtml = `
+      <div class="resources-info">
+        <h4>Resources</h4>
+        ${resourcesAtTile.map(resource => `
+          <div class="resource-item">
+            <span class="resource-type">${ResourceType[resource.getType()]}</span>
+            <div class="resource-amount">
+              ${createProgressBar(
+                resource.getAmount(),
+                'amount',
+                resource.getMaxAmount()
+              )}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
 
   selectedTileContent.innerHTML = `
     <p>Position: (${selectedTile.x}, ${selectedTile.y})</p>
     <p>Type: ${TileType[tile]}</p>
-    <p>Height: ${Math.round(height * 100)}</p>
+    ${resourcesHtml}
   `;
 }

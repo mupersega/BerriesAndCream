@@ -7,6 +7,11 @@ import { StructureType } from './types/StructureType';
 import { Point } from './types/Point';
 import { gameState } from './state/GameState';
 import { RenderSystem } from './rendering/RenderingSystem';
+import { Agent } from './Agent';
+
+import { Resource } from './Resource';
+import { ResourceType } from './types/ResourceType';
+import { IDrawable } from './interfaces/IDrawable';
 
 type Node = {
   position: { x: number, y: number };
@@ -352,13 +357,6 @@ function generateTileMap(width: number, height: number, seed?: number): TileType
 
 // Create a global noise generator instance
 const noise = new HeightMapGenerator(100, 100);
-
-// Add Agent import at the top
-import { Agent } from './Agent';
-
-// Add Resource import at the top
-import { Resource, ResourceType } from './Resource';
-import { IDrawable } from './interfaces/IDrawable';
 
 let canvas: HTMLCanvasElement;
 let ctx: CanvasRenderingContext2D;

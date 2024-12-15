@@ -2,14 +2,7 @@ import { TileType } from './types/TileType';
 import { IDrawable } from './interfaces/IDrawable';
 import { IsometricRenderer } from './rendering/IsometricRenderer';
 import { gameState } from './state/GameState';
-
-export enum ResourceType {
-  BerryBush,
-  BerryPile,
-  BerryTree,
-  Corpse,
-  Tree
-}
+import { ResourceType } from './types/ResourceType';
 
 interface ResourceConfig {
   maxQuantity: number;
@@ -32,7 +25,7 @@ interface ResourceConfig {
 
 export const RESOURCE_CONFIGS: Record<ResourceType, ResourceConfig> = {
   [ResourceType.BerryBush]: {
-    maxQuantity: 40,
+    maxQuantity: 10,
     color: '#cc2166',
     size: 32,
     validTiles: [
@@ -50,7 +43,7 @@ export const RESOURCE_CONFIGS: Record<ResourceType, ResourceConfig> = {
     verticalOffset: 0,
   },
   [ResourceType.BerryPile]: {
-    maxQuantity: 25,
+    maxQuantity: 3,
     color: '#cc2166',
     size: 16,
     validTiles: [
@@ -70,7 +63,7 @@ export const RESOURCE_CONFIGS: Record<ResourceType, ResourceConfig> = {
     verticalOffset: -6,
   },
   [ResourceType.BerryTree]: {
-    maxQuantity: 80,
+    maxQuantity: 30,
     color: '#cc2166',
     size: 32,
     validTiles: [
@@ -108,7 +101,7 @@ export const RESOURCE_CONFIGS: Record<ResourceType, ResourceConfig> = {
     verticalOffset: 8,
   },
   [ResourceType.Tree]: {
-    maxQuantity: 100,
+    maxQuantity: 30,
     color: '#228B22',
     size: 32,
     validTiles: [

@@ -1,9 +1,10 @@
 import { TileType } from './types/TileType';
-import { Resource, ResourceType } from './Resource';
+import { Resource } from './Resource';
 import { BehaviorManager } from './behaviors/BehaviorManager';
 import { AgentRole } from './types/AgentRole';
 import { InventoryItem } from './types/InventoryItem';
 import { Point } from './types/Point';
+import { ResourceType } from './types/ResourceType';
 import { Dijkstra } from './pathfinding/Dijkstra';
 import { BehaviorEntity } from './behaviors/BehaviourEntity';
 import { IDrawable } from './interfaces/IDrawable';

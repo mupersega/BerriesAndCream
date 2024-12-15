@@ -1,7 +1,8 @@
 // src/behaviors/FellBehavior.ts
 import { AgentBehavior } from './AgentBehavior';
 import { Agent } from '../Agent';
-import { Resource, ResourceType } from '../Resource';
+import { Resource } from '../Resource';
+import { ResourceType } from '../types/ResourceType';
 import { Dijkstra } from '../pathfinding/Dijkstra';
 import { ItemType } from '../types/ItemType';
 import { InventoryItem } from '../types/InventoryItem';

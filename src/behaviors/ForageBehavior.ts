@@ -1,9 +1,10 @@
 import { AgentBehavior } from './AgentBehavior';
 import { Agent } from '../Agent';
-import { Resource, ResourceType } from '../Resource';
+import { Resource } from '../Resource';
 import { Dijkstra } from '../pathfinding/Dijkstra';
 import { ItemType } from '../types/ItemType';
 import { InventoryItem } from '../types/InventoryItem';
+import { ResourceType } from '../types/ResourceType';
 
 export class ForageBehavior implements AgentBehavior {
   private readonly HARVEST_DELAY = 60;  // 1 second at 60fps
