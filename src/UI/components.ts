@@ -1,8 +1,7 @@
-import { ResourceType } from '../Resource';
 import { Agent } from '../Agent';
-import { Resource } from '../Resource';
 import { InventoryItem } from '../types/InventoryItem';
 import { Point } from '../types/Point';
+import { TileType } from '../types/TileType';
 
 export const UIComponents = {
   createAgentCard(agent: Agent, index: number): string {
@@ -165,5 +164,39 @@ function renderInventory(inventory: (InventoryItem | null)[]): string {
         `).join('')}
       </div>
     </div>
+  `;
+}
+
+export function initSelectedTilePanel() {
+  const uiContainer = document.querySelector('.ui');
+  if (!uiContainer) return;
+
+  // Create selected tile panel
+  const selectedTilePanel = document.createElement('div');
+  selectedTilePanel.className = 'selected-tile-panel';
+  selectedTilePanel.innerHTML = `
+    <h3>Selected Tile</h3>
+    <div class="selected-tile-content"></div>
+  `;
+  
+  uiContainer.appendChild(selectedTilePanel);
+}
+
+export function updateSelectedTilePanel(selectedTile: Point | null, gameState: GameState) {
+  const selectedTileContent = document.querySelector('.selected-tile-content');
+  if (!selectedTileContent) return;
+
+  if (!selectedTile) {
+    selectedTileContent.innerHTML = '<p>No tile selected</p>';
+    return;
+  }
+
+  const tile = gameState.getTileAt(selectedTile.x, selectedTile.y);
+  const height = window.noise?.getValue(selectedTile.x, selectedTile.y) ?? 0;
+
+  selectedTileContent.innerHTML = `
+    <p>Position: (${selectedTile.x}, ${selectedTile.y})</p>
+    <p>Type: ${TileType[tile]}</p>
+    <p>Height: ${Math.round(height * 100)}</p>
   `;
 }

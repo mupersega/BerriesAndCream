@@ -2,7 +2,7 @@ import './style.scss'
 
 import { Dijkstra } from './pathfinding/Dijkstra';
 import { TileType } from './types/TileType';
-import { initInfoPanel } from './UI/components';
+import { initInfoPanel, initSelectedTilePanel, updateSelectedTilePanel } from './UI/components';
 import { StructureType } from './types/StructureType';
 import { Point } from './types/Point';
 import { gameState } from './state/GameState';
@@ -423,6 +423,9 @@ function renderMap() {
     drawHoveredTile(ctx, mouseX, mouseY);
   }
 
+  // Draw selected tile
+  drawSelectedTile(ctx);
+
   const drawables: IDrawable[] = [
     ...gameState.getResources(),
     ...gameState.getStructures(),
@@ -431,7 +434,6 @@ function renderMap() {
 
   RenderSystem.render(ctx, drawables);
 
-  
   ctx.restore();
   // Draw agent paths
   gameState.getAgents().forEach(agent => {
@@ -465,6 +467,7 @@ function generateNewMap() {
   
   // Reinitialize UI and render
   initInfoPanel(gameState.getAgents());
+  initSelectedTilePanel();
   renderBackground(map);
   renderMap();
 }
@@ -510,6 +513,9 @@ function setupCanvases(): {
   // Add mouse move listener
   mainCanvas.addEventListener('mousemove', handleMouseMove);
 
+  // Add click listener
+  mainCanvas.addEventListener('click', handleClick);
+
   return { mainCanvas, backgroundCanvas, mainCtx, backgroundCtx };
 }
 
@@ -517,15 +523,35 @@ function handleMouseMove(event: MouseEvent) {
   if (!canvas || !gameState) return;
 
   const rect = canvas.getBoundingClientRect();
+  // Get mouse position relative to canvas center
   const mouseScreenX = event.clientX - rect.left - canvas.width / 2;
   const mouseScreenY = event.clientY - rect.top - 100;
   
-  // First, get a rough estimate of the tile position
-  let tileX = (mouseScreenX / tileSize + mouseScreenY / (tileSize/2)) / 2;
-  let tileY = (mouseScreenY / (tileSize/2) - mouseScreenX / tileSize) / 2;
+  // First, get the tile coordinates without height offset
+  const tileX = Math.floor((mouseScreenX / tileSize + mouseScreenY / (tileSize/2)) / 2);
+  const tileY = Math.floor((mouseScreenY / (tileSize/2) - mouseScreenX / tileSize) / 2);
   
-  mouseX = Math.floor(tileX);
-  mouseY = Math.floor(tileY);
+  // Get the height offset for this tile
+  const tileType = gameState.getTileAt(tileX, tileY);
+  let heightFactor = 0;
+  switch (tileType) {
+    case TileType.DeepWater: heightFactor = 0; break;
+    case TileType.Water: heightFactor = 0.15; break;
+    case TileType.Sand: heightFactor = 0.3; break;
+    case TileType.Grass: heightFactor = 0.45; break;
+    case TileType.Highlands: heightFactor = 0.6; break;
+    case TileType.Dirt: heightFactor = 0.75; break;
+    case TileType.Stone: heightFactor = 0.9; break;
+    case TileType.Snow: heightFactor = 1; break;
+  }
+  
+  // Adjust the mouse Y position by the height offset
+  const verticalOffset = heightFactor * tileSize;
+  const adjustedMouseY = mouseScreenY + verticalOffset;
+  
+  // Recalculate tile position with height-adjusted mouse position
+  mouseX = Math.floor((mouseScreenX / tileSize + adjustedMouseY / (tileSize/2)) / 2);
+  mouseY = Math.floor((adjustedMouseY / (tileSize/2) - mouseScreenX / tileSize) / 2);
   
   // Update hovered resource
   hoveredResource = gameState.getResources().find(resource => {
@@ -604,21 +630,6 @@ function updateInfoPanel() {
     `;
   }
 
-  // Structure info (when hovering)
-  const hoveredStructure = gameState.getStructures().find(structure => {
-    const pos = structure.getPosition();
-    return pos.x === mouseX && pos.y === mouseY;
-  });
-
-  if (hoveredStructure) {
-    hoverContent += `
-      <div class="hover-info">
-        <h4>Structure Info</h4>
-        <p>Type: ${StructureType[hoveredStructure.getType()]}</p>
-      </div>
-    `;
-  }
-  
   hoverContainer.innerHTML = hoverContent;
 }
 
@@ -1138,4 +1149,103 @@ function drawAgentPath(agent: Agent, path: Point[]) {
   });
   
   ctx.restore();
+}
+
+function handleClick(event: MouseEvent) {
+  if (!canvas || !gameState) return;
+
+  const rect = canvas.getBoundingClientRect();
+  // Get mouse position relative to canvas center
+  const mouseScreenX = event.clientX - rect.left - canvas.width / 2;
+  const mouseScreenY = event.clientY - rect.top - 100;
+  
+  // First, get the tile coordinates without height offset
+  const tileX = Math.floor((mouseScreenX / tileSize + mouseScreenY / (tileSize/2)) / 2);
+  const tileY = Math.floor((mouseScreenY / (tileSize/2) - mouseScreenX / tileSize) / 2);
+  
+  // Get the height offset for this tile
+  const tileType = gameState.getTileAt(tileX, tileY);
+  let heightFactor = 0;
+  switch (tileType) {
+    case TileType.DeepWater: heightFactor = 0; break;
+    case TileType.Water: heightFactor = 0.15; break;
+    case TileType.Sand: heightFactor = 0.3; break;
+    case TileType.Grass: heightFactor = 0.45; break;
+    case TileType.Highlands: heightFactor = 0.6; break;
+    case TileType.Dirt: heightFactor = 0.75; break;
+    case TileType.Stone: heightFactor = 0.9; break;
+    case TileType.Snow: heightFactor = 1; break;
+  }
+  
+  // Adjust the mouse Y position by the height offset
+  const verticalOffset = heightFactor * tileSize;
+  const adjustedMouseY = mouseScreenY + verticalOffset;
+  
+  // Recalculate tile position with height-adjusted mouse position
+  const adjustedTileX = Math.floor((mouseScreenX / tileSize + adjustedMouseY / (tileSize/2)) / 2);
+  const adjustedTileY = Math.floor((adjustedMouseY / (tileSize/2) - mouseScreenX / tileSize) / 2);
+  
+  // Check if the coordinates are within bounds
+  if (adjustedTileX >= 0 && adjustedTileX < gameState.getMapWidth() && 
+      adjustedTileY >= 0 && adjustedTileY < gameState.getMapHeight()) {
+    
+    // Toggle selection
+    const currentSelection = gameState.getSelectedTile();
+    if (currentSelection && 
+        currentSelection.x === adjustedTileX && 
+        currentSelection.y === adjustedTileY) {
+      gameState.setSelectedTile(null); // Deselect if clicking the same tile
+    } else {
+      gameState.setSelectedTile({ x: adjustedTileX, y: adjustedTileY }); // Select new tile
+    }
+    
+    // Update UI
+    updateInfoPanel();
+    updateSelectedTilePanel(gameState.getSelectedTile(), gameState);
+  }
+}
+
+function drawSelectedTile(ctx: CanvasRenderingContext2D) {
+  const selectedTile = gameState.getSelectedTile();
+  if (!selectedTile) return;
+
+  const { x, y } = selectedTile;
+  
+  // Get tile type and calculate height
+  const tileType = gameState.getTileAt(x, y);
+  let heightFactor = 0;
+  switch (tileType) {
+    case TileType.DeepWater: heightFactor = 0; break;
+    case TileType.Water: heightFactor = 0.15; break;
+    case TileType.Sand: heightFactor = 0.3; break;
+    case TileType.Grass: heightFactor = 0.45; break;
+    case TileType.Highlands: heightFactor = 0.6; break;
+    case TileType.Dirt: heightFactor = 0.75; break;
+    case TileType.Stone: heightFactor = 0.9; break;
+    case TileType.Snow: heightFactor = 1; break;
+  }
+
+  const verticalOffset = heightFactor * tileSize;
+
+  // Convert tile coordinates to isometric position
+  const isoX = (x - y) * (tileSize);
+  const isoY = (x + y) * (tileSize/2) - verticalOffset;
+
+  // Draw selection indicator
+  ctx.beginPath();
+  ctx.moveTo(isoX, isoY);
+  ctx.lineTo(isoX + tileSize, isoY + tileSize/2);
+  ctx.lineTo(isoX, isoY + tileSize);
+  ctx.lineTo(isoX - tileSize, isoY + tileSize/2);
+  ctx.closePath();
+  
+  // Draw glowing effect
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  
+  // Add pulsing effect
+  const pulseAmount = Math.sin(Date.now() / 500) * 0.2 + 0.4;
+  ctx.fillStyle = `rgba(255, 255, 255, ${pulseAmount})`;
+  ctx.fill();
 }
