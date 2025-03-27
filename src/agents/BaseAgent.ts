@@ -3,12 +3,9 @@ import { Resource } from '../Resource';
 import { BehaviorManager } from '../behaviors/BehaviorManager';
 import { InventoryItem } from '../types/InventoryItem';
 import { Point } from '../types/Point';
-import { ResourceType } from '../types/ResourceType';
 import { Dijkstra } from '../pathfinding/Dijkstra';
-import { BehaviorEntity } from '../behaviors/BehaviourEntity';
 import { IDrawable } from '../interfaces/IDrawable';
 import { IsometricRenderer } from '../rendering/IsometricRenderer';
-import { LittleLad } from './LittleLad';
 
 interface AgentObserver {
   onHealthChange?: (health: number) => void;
@@ -334,29 +331,6 @@ export abstract class BaseAgent implements IDrawable {
     
     ctx.fill();
     ctx.restore();
-  }
-
-  private drawHealthBar(ctx: CanvasRenderingContext2D, x: number, y: number): void {
-    const verticalOffset = IsometricRenderer.getHeightOffset(this.x, this.y);
-    const barWidth = 32;
-    const barHeight = 4;
-    const barOffset = 40;
-
-    ctx.fillStyle = '#000';
-    ctx.fillRect(
-      x - barWidth/2,
-      y - verticalOffset - barOffset,
-      barWidth,
-      barHeight
-    );
-
-    ctx.fillStyle = '#f00';
-    ctx.fillRect(
-      x - barWidth/2,
-      y - verticalOffset - barOffset,
-      barWidth * (this.currentHealth / this.maxHealth),
-      barHeight
-    );
   }
 
   public getDrawOrder(): number {
@@ -685,17 +659,17 @@ export abstract class BaseAgent implements IDrawable {
     });
   }
 
-  private notifyStuckChange() {
-    this.observers.forEach(observer => {
-      observer.onStuckChange?.(this.isStuck());
-    });
-  }
+  // private notifyStuckChange() {
+  //   this.observers.forEach(observer => {
+  //     observer.onStuckChange?.(this.isStuck());
+  //   });
+  // }
 
-  private notifyPathChange() {
-    this.observers.forEach(observer => {
-      observer.onPathChange?.(this.getCurrentPath());
-    });
-  }
+  // private notifyPathChange() {
+  //   this.observers.forEach(observer => {
+  //     observer.onPathChange?.(this.getCurrentPath());
+  //   });
+  // }
 
   private notifyBehaviorChange() {
     this.observers.forEach(observer => {
@@ -755,5 +729,9 @@ export abstract class BaseAgent implements IDrawable {
     this.bounceHeight = this.DEFAULT_BOUNCE_HEIGHT;
     this.bounceSpeed = this.DEFAULT_BOUNCE_SPEED;
     this.bounceSquash = this.DEFAULT_BOUNCE_SQUASH;
+  }
+
+  public cleanup(): void {
+    this.observers = [];
   }
 }

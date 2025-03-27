@@ -137,4 +137,8 @@ export class Structure {
       this.position.y
     );
   }
+
+  public cleanup(): void {
+    // Clean up any event listeners, etc.
+  }
 }

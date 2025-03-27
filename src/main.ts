@@ -8,7 +8,6 @@ import { gameState } from './state/GameState';
 import { RenderSystem } from './rendering/RenderingSystem';
 import { BaseAgent } from './agents/BaseAgent';
 
-import { Resource } from './Resource';
 import { IDrawable } from './interfaces/IDrawable';
 import { Quadtree } from './state/Quadtree';
 
@@ -48,7 +47,7 @@ class HeightMapGenerator {
     const peaks: {x: number, y: number}[] = [];
 
     for (let system = 0; system < numSystems; system++) {
-      let centerX, centerY;
+      let centerX: number, centerY: number;
       let attempts = 0;
       const maxAttempts = 50;
 
@@ -147,7 +146,6 @@ class HeightMapGenerator {
   public smooth(passes: number = 3) {
     // Larger radial kernel
     const radius = 3;
-    const kernelSize = radius * 2 + 1;
     
     for (let pass = 0; pass < passes; pass++) {
       const newMap = Array(this.height).fill(0).map(() => Array(this.width).fill(0));
@@ -294,7 +292,8 @@ class HeightMapGenerator {
     }
   }
 
-  public generateRivers(numRivers: number = 3) {
+  // TODO: include number of rivers as a parameter
+  public generateRivers() {
     // Find the highest point on the map for the main river source
     let startX = 0, startY = 0;
     let highestValue = 0;
@@ -318,10 +317,10 @@ class HeightMapGenerator {
 }
 
 // Generate tile map
-function generateTileMap(width: number, height: number, seed?: number): TileType[][] {
+function generateTileMap(width: number, height: number): TileType[][] {
   const heightMap = new HeightMapGenerator(width, height);
   // heightMap.smooth(2); // Reduced from 3 to 1 pass of smoothing
-  heightMap.generateRivers(1);
+  heightMap.generateRivers();
   heightMap.smooth(4); // Smooth once more to blend rivers
   const map: TileType[][] = [];
   
@@ -367,7 +366,6 @@ const tileSize = 16;
 // Add mouse position tracking
 let mouseX = 0;
 let mouseY = 0;
-let hoveredResource: Resource | null = null;
 
 // Add at the top with other globals
 interface DebugFlags {
@@ -648,10 +646,10 @@ function handleMouseMove(event: MouseEvent) {
   mouseY = Math.floor((adjustedMouseY / (tileSize/2) - mouseScreenX / tileSize) / 2);
   
   // Update hovered resource
-  hoveredResource = gameState.getResources().find(resource => {
-    const pos = resource.getPosition();
-    return pos.x === mouseX && pos.y === mouseY;
-  }) || null;
+  // const hoveredResource = gameState.getResources().find(resource => {
+  //   const pos = resource.getPosition();
+  //   return pos.x === mouseX && pos.y === mouseY;
+  // }) || null;
   
   updateInfoPanel();
 }
@@ -727,7 +725,7 @@ function renderBackground(map: TileType[][]) {
 
 // Add to your rendering code
 function renderPathfinding(nodes: Map<string, Node>) {
-  nodes.forEach((node, key) => {
+  nodes.forEach((node) => {
     const x = node.position.x * tileSize;
     const y = node.position.y * tileSize;
     
@@ -1015,7 +1013,7 @@ function drawIsometricTile(ctx: CanvasRenderingContext2D, x: number, y: number, 
       ctx.stroke();
     } else if ('points' in dec) {  // Stone shapes
       ctx.beginPath();
-      dec.points.forEach((point, index) => {
+      dec.points.forEach((point: Point, index: number) => {
         if (index === 0) {
           ctx.moveTo(x + point.x, y + point.y - verticalOffset);
         } else {
@@ -1438,12 +1436,6 @@ function scrollLoop() {
 const pressedKeys = new Set<string>();
 
 function initScrollZones() {
-  const zones = {
-    'scroll-left': { x: -1, y: 0 },
-    'scroll-right': { x: 1, y: 0 },
-    'scroll-up': { x: 0, y: -1 },
-    'scroll-down': { x: 0, y: 1 }
-  };
 
   // Handle key presses
   document.addEventListener('keydown', (event) => {

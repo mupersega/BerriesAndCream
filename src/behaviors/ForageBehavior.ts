@@ -89,6 +89,7 @@ export class ForageBehavior implements AgentBehavior {
     // Check if we've reached our target
     if (agent.hasTarget()) {
       const target = agent.getTarget();
+      if (!target) return;
       const distance = Math.hypot(target.x - pos.x, target.y - pos.y);
       
       if (distance <= 0.5) {  // If we're close enough to the target

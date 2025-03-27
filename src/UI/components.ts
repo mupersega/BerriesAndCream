@@ -195,7 +195,7 @@ function renderInventory(inventory: (InventoryItem | null)[]): string {
     <div class="inventory-container">
       <h5>Inventory</h5>
       <div class="inventory-grid">
-        ${inventory.map((slot, index) => `
+        ${inventory.map((slot) => `
           <div class="inventory-slot ${slot ? 'filled' : 'empty'}">
             ${slot ? `
               <div class="item ${slot.type.toLowerCase()}">

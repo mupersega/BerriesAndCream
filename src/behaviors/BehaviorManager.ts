@@ -12,8 +12,6 @@ import { GrazeBehavior } from './GrazeBehavior';
 import { WanderBehavior } from './WanderBehavior';
 import { FollowBehavior } from './FollowBehavior';
 
-import { Resource } from '../Resource';
-
 export class BehaviorManager {
   private forageBehavior: ForageBehavior;
   private fetchBehavior: FetchBehavior;

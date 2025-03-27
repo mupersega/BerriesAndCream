@@ -1,6 +1,6 @@
 // src/behaviors/FellBehavior.ts
 import { AgentBehavior } from './AgentBehavior';
-import { Agent } from '../agents/BaseAgent';
+import { BaseAgent } from '../agents/BaseAgent';
 import { Resource } from '../Resource';
 import { Dijkstra } from '../pathfinding/Dijkstra';
 import { ItemType } from '../types/ItemType';
@@ -17,12 +17,10 @@ export class FellBehavior implements AgentBehavior {
   constructor() {}
 
   private isTreeResource(type: ResourceType): boolean {
-    return type === ResourceType.Tree || 
-           type === ResourceType.PineTree || 
-           type === ResourceType.OakTree;
+    return type === ResourceType.Tree;
   }
 
-  update(agent: Agent): void {
+  update(agent: BaseAgent): void {
     // Stop chopping if inventory is full and not currently chopping
     if (!agent.hasInventorySpace() && !this.currentTree) {
       this.currentTree = null;
@@ -90,6 +88,7 @@ export class FellBehavior implements AgentBehavior {
     // Check if we've reached our target
     if (agent.hasTarget()) {
       const target = agent.getTarget();
+      if (!target) return;
       const distance = Math.hypot(target.x - pos.x, target.y - pos.y);
       
       if (distance <= 0.5) {  // If we're close enough to the target
@@ -113,7 +112,7 @@ export class FellBehavior implements AgentBehavior {
     return 'Fell';
   }
 
-  private findNearestTree(agent: Agent): Resource | null {
+  private findNearestTree(agent: BaseAgent): Resource | null {
     const pos = agent.getPosition();
     let nearestTree: Resource | null = null;
     let shortestPathLength = Infinity;

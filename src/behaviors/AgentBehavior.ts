@@ -1,6 +1,6 @@
-import { Agent } from "../agents/BaseAgent";
+import { BaseAgent } from "../agents/BaseAgent";
 
 export interface AgentBehavior {
-  update(agent: Agent): void;
+  update(agent: BaseAgent): void;
   getName(): string;
 } 

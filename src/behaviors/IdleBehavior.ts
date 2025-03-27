@@ -1,8 +1,8 @@
 import { AgentBehavior } from './AgentBehavior';
-import { Agent } from '../agents/BaseAgent';
+import { BaseAgent } from '../agents/BaseAgent';
 
 export class IdleBehavior implements AgentBehavior {
-    public update(agent: Agent): void {
+    public update(agent: BaseAgent): void {
         // Do nothing - agent stays still
         agent.clearTarget();
     }

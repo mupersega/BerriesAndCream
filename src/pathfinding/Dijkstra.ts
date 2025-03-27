@@ -15,7 +15,7 @@ type Node = {
 export class Dijkstra {
   private readonly DIAGONAL_COST = Math.SQRT2;
   private readonly STRAIGHT_COST = 1.0;
-  private isWalkable: ((x: number, y: number) => boolean) | null = null;
+  public isWalkable: ((x: number, y: number) => boolean) | null = null;
   private onVisualizationUpdate?: (nodes: Map<string, Node>) => void;
 
   private pointToKey(point: Point): string {
