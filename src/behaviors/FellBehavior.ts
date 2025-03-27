@@ -1,6 +1,6 @@
 // src/behaviors/FellBehavior.ts
 import { AgentBehavior } from './AgentBehavior';
-import { Agent } from '../Agent';
+import { Agent } from '../agents/BaseAgent';
 import { Resource } from '../Resource';
 import { Dijkstra } from '../pathfinding/Dijkstra';
 import { ItemType } from '../types/ItemType';
@@ -27,7 +27,8 @@ export class FellBehavior implements AgentBehavior {
     if (!agent.hasInventorySpace() && !this.currentTree) {
       this.currentTree = null;
       this.chopTimer = 0;
-      agent.setBehavior('idle');
+      agent.setBehavior('Flush');
+      agent.setLastBehavior('Fell');
       return;
     }
 

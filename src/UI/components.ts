@@ -1,25 +1,30 @@
-import { Agent } from '../Agent';
+import { BaseAgent } from '../agents/BaseAgent';
 import { InventoryItem } from '../types/InventoryItem';
 import { Point } from '../types/Point';
 import { TileType } from '../types/TileType';
-import { ResourceType } from '../types/ResourceType';
+import { ResourceType, ResourceCount } from '../types/ResourceType';
 import { gameState, GameState } from '../state/GameState';
 import { getTilesInRadius } from '../utils/tileUtils';
 
 export const UIComponents = {
-  createAgentCard(agent: Agent, index: number): string {
-    const behaviorValue = agent.getBehavior();
+  createAgentCard(agent: BaseAgent, index: number): string {
+    const currentBehavior = agent.getBehavior();
+    const allowedBehaviors = agent.getAllowedBehaviors();
     
     return `
       <div class="agent-card" data-agent-index="${index}">
         <header class="agent-header">
           <h4>Agent ${index + 1}</h4>
           <div class="behavior-controls">
-            <select class="behavior-select" data-agent-index="${index}">
-              <option value="Idle" ${behaviorValue === 'Idle' ? 'selected' : ''}>Idle</option>
-              <option value="Forage" ${behaviorValue === 'Forage' ? 'selected' : ''}>Forage</option>
-              <option value="Fell" ${behaviorValue === 'Fell' ? 'selected' : ''}>Fell</option>
-            </select>
+            ${allowedBehaviors.map(behavior => `
+              <button 
+                class="behavior-button ${behavior.toLowerCase()} ${currentBehavior === behavior ? 'active' : ''}" 
+                data-behavior="${behavior}"
+                data-agent-index="${index}"
+              >
+                ${getBehaviorIcon(behavior)}
+              </button>
+            `).join('')}
           </div>
           <button class="debug-toggle">▶</button>
         </header>
@@ -33,7 +38,7 @@ export const UIComponents = {
   }
 };
 
-export function initInfoPanel(agents: Agent[]) {
+export function initInfoPanel(agents: BaseAgent[]) {
   const infoPanel = document.getElementById('infoPanel');
   
   if (!infoPanel) return;
@@ -81,23 +86,26 @@ export function initInfoPanel(agents: Agent[]) {
     }
 
     // Add behavior select listener
-    const select = card.querySelector('.behavior-select') as HTMLSelectElement;
-    
-    if (select) {
-      select.addEventListener('change', (e) => {
-        const target = e.target as HTMLSelectElement;
-        const newBehavior = target.value;
-        console.log('[UI] Select changed:', { 
-          agentIndex: index, 
-          newBehavior, 
-          event: e 
-        });
-        window.changeBehavior(index, newBehavior);
+    const behaviorButtons = card.querySelectorAll('.behavior-button');
+    behaviorButtons.forEach(button => {
+      button.addEventListener('click', (e) => {
+        const target = e.target as HTMLButtonElement;
+        const newBehavior = target.dataset.behavior;
+        if (newBehavior) {
+          console.log('[UI] Button clicked:', { 
+            agentIndex: index, 
+            newBehavior, 
+            event: e 
+          });
+          window.changeBehavior(index, newBehavior);
+          
+          // Update active state of buttons
+          behaviorButtons.forEach(btn => btn.classList.remove('active'));
+          target.classList.add('active');
+        }
       });
-    } else {
-      console.warn(`[InitInfoPanel] Could not find select element for agent ${index}`);
-    }
-    
+    });
+
     // Add observer for this agent's card
     agent.addObserver({
       onHealthChange: (health) => {
@@ -135,6 +143,14 @@ export function initInfoPanel(agents: Agent[]) {
           }
         }
       },
+      onBehaviorChange: (behavior) => {
+        // Update the active state of behavior buttons
+        const behaviorButtons = card.querySelectorAll('.behavior-button');
+        behaviorButtons.forEach(button => {
+          const buttonBehavior = (button as HTMLElement).dataset.behavior;
+          button.classList.toggle('active', buttonBehavior === behavior);
+        });
+      }
     });
   });
 }
@@ -281,6 +297,11 @@ export function initActionPanel() {
       <button class="action-button fell-button">Fell</button>
       <button class="toggle-button fell-clear">✕</button>
     </div>
+    <div class="action-group">
+      <button class="toggle-button fetch-toggle" data-active="true">👁</button>
+      <button class="action-button fetch-button"">Fetch</button>
+      <button class="toggle-button fetch-clear">✕</button>
+    </div>
     <div class="separator"></div>
     <button class="action-button clear-all-button">Clear All (C)</button>
   `;
@@ -291,11 +312,13 @@ export function initActionPanel() {
   window.DEBUG.showFindableTiles = true;
   window.DEBUG.showForageableTiles = true;
   window.DEBUG.showFellableTiles = true;
+  window.DEBUG.showFetchableTiles = true;
 
   // Add click handlers for toggles
   const findToggle = actionPanel.querySelector('.find-toggle');
   const forageToggle = actionPanel.querySelector('.forage-toggle');
   const fellToggle = actionPanel.querySelector('.fell-toggle');
+  const fetchToggle = actionPanel.querySelector('.fetch-toggle');
 
   findToggle?.addEventListener('click', () => {
     const button = findToggle as HTMLButtonElement;
@@ -315,10 +338,17 @@ export function initActionPanel() {
     button.dataset.active = gameState.isShowingFellableTiles().toString();
   });
 
+  fetchToggle?.addEventListener('click', () => {
+    const button = fetchToggle as HTMLButtonElement;
+    gameState.toggleFetchableTiles();
+    button.dataset.active = gameState.isShowingFetchableTiles().toString();
+  });
+
   // Add click handlers
   const findButton = actionPanel.querySelector('.find-button');
   const forageButton = actionPanel.querySelector('.forage-button');
   const fellButton = actionPanel.querySelector('.fell-button');
+  const fetchButton = actionPanel.querySelector('.fetch-button');
   const clearButton = actionPanel.querySelector('.clear-button');
 
   if (findButton) {
@@ -381,6 +411,26 @@ export function initActionPanel() {
     });
   }
 
+  if (fetchButton) {
+    fetchButton.addEventListener('click', () => {
+      const selectedTile = gameState.getSelectedTile();
+      if (!selectedTile) return;
+
+      const tilesInRadius = getTilesInRadius(selectedTile, 5, gameState);
+      tilesInRadius.forEach(tile => {
+        gameState.markTileAsFetchable(tile.x, tile.y);
+        // ensure fetchable tiles are visible
+        if (!gameState.isShowingFetchableTiles()) {
+          gameState.toggleFetchableTiles();
+          // set toggle button to active
+          if (fetchToggle) {
+            (fetchToggle as HTMLButtonElement).dataset.active = 'true';
+          }
+        }
+      });
+    });
+  }
+
   if (clearButton) {
     clearButton.addEventListener('click', () => {
       gameState.clearAllMarkedTiles();
@@ -404,6 +454,9 @@ export function initActionPanel() {
       case '3':
         (fellButton as HTMLButtonElement).click();
         break;
+      case '4':
+        (fetchButton as HTMLButtonElement).click();
+        break;
       case 'c':
         (clearButton as HTMLButtonElement).click();
         break;
@@ -414,6 +467,7 @@ export function initActionPanel() {
   const findClear = actionPanel.querySelector('.find-clear');
   const forageClear = actionPanel.querySelector('.forage-clear');
   const fellClear = actionPanel.querySelector('.fell-clear');
+  const fetchClear = actionPanel.querySelector('.fetch-clear');
 
   findClear?.addEventListener('click', () => {
     gameState.clearFindableTiles();
@@ -426,4 +480,62 @@ export function initActionPanel() {
   fellClear?.addEventListener('click', () => {
     gameState.clearFellableTiles();
   });
+
+  fetchClear?.addEventListener('click', () => {
+    gameState.clearFetchableTiles();
+  });
+}
+
+export function initResourceCounter() {
+  const resourceCounter = document.createElement('div');
+  resourceCounter.className = 'resource-counter';
+  resourceCounter.innerHTML = `
+    <div class="resource-totals">
+      <div class="resource-item">
+        <span class="icon">🫐</span>
+        <span class="count berries">0</span>
+      </div>
+      <div class="resource-item">
+        <span class="icon">🪵</span>
+        <span class="count wood">0</span>
+      </div>
+      <div class="resource-item">
+        <span class="icon">🥛</span>
+        <span class="count cream">0</span>
+      </div>
+      <div class="resource-item">
+        <span class="icon">🪨</span>
+        <span class="count stone">0</span>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(resourceCounter);
+
+  // Set up update interval
+  setInterval(() => {
+    const berriesCount = resourceCounter.querySelector('.count.berries');
+    const woodCount = resourceCounter.querySelector('.count.wood');
+    const creamCount = resourceCounter.querySelector('.count.cream');
+    const stoneCount = resourceCounter.querySelector('.count.stone');
+
+    if (berriesCount) berriesCount.textContent = gameState.getResourceCount(ResourceCount.Berries).toString();
+    if (woodCount) woodCount.textContent = gameState.getResourceCount(ResourceCount.Wood).toString();
+    if (creamCount) creamCount.textContent = gameState.getResourceCount(ResourceCount.Cream).toString();
+    if (stoneCount) stoneCount.textContent = gameState.getResourceCount(ResourceCount.Stone).toString();
+  }, 100);
+}
+
+// Add this helper function at the top level
+function getBehaviorIcon(behavior: string): string {
+  const icons: { [key: string]: string } = {
+    'Forage': '🫐',
+    'Hunt': '🏹',
+    'Rest': '💤',
+    'Flush': '🚽',
+    'Fell': '🪓',
+    'Fetch': '🐄',
+    'Follow': '👣',
+    'Idle': '💭'
+  };
+  return icons[behavior] || behavior[0];
 }

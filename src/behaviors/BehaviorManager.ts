@@ -1,37 +1,78 @@
-import { BehaviorEntity } from './BehaviorEntity';
-import { Agent } from '../Agent';
+import { BehaviorEntity } from './BehaviourEntity';
+import { BaseAgent } from '../agents/BaseAgent';
 import { AgentBehavior } from './AgentBehavior';
 import { ForageBehavior } from './ForageBehavior';
+
 import { IdleBehavior } from './IdleBehavior';
 import { FellBehavior } from './FellBehavior';
 import { FlushBehavior } from './FlushBehavior';
+import { FetchBehavior } from './FetchBehavior';
+
+import { GrazeBehavior } from './GrazeBehavior';
+import { WanderBehavior } from './WanderBehavior';
+import { FollowBehavior } from './FollowBehavior';
 
 import { Resource } from '../Resource';
 
 export class BehaviorManager {
   private forageBehavior: ForageBehavior;
+  private fetchBehavior: FetchBehavior;
+  private followBehavior: FollowBehavior;
   private idleBehavior: IdleBehavior;
   private fellBehavior: FellBehavior;
   private flushBehavior: FlushBehavior;
+  private grazeBehavior: GrazeBehavior;
+  private wanderBehavior: WanderBehavior;
   private currentBehavior: AgentBehavior | null = null;
   private selectedBehavior: string = 'Idle';
-  private entityType: 'agent' | 'creature';
+  private allowedBehaviors: string[];
+  private lastBehavior: string = 'Idle'; 
 
-  constructor(resources: Resource[], entityType: 'agent' | 'creature' = 'agent') {
-    this.entityType = entityType;
+  constructor(
+    allowedBehaviors: string[] = ['Idle']
+  ) {
+    this.allowedBehaviors = allowedBehaviors;
+    this.fetchBehavior = new FetchBehavior();
     this.forageBehavior = new ForageBehavior();
     this.idleBehavior = new IdleBehavior();
     this.fellBehavior = new FellBehavior();
     this.flushBehavior = new FlushBehavior();
+    this.grazeBehavior = new GrazeBehavior();
+    this.wanderBehavior = new WanderBehavior();
+    this.followBehavior = new FollowBehavior();
+
+    // Set initial behavior to first allowed behavior
+    if (allowedBehaviors.length > 0) {
+      this.selectedBehavior = allowedBehaviors[0];
+    }
   }
 
   public setBehavior(behaviorName: string): void {
+    if (!this.allowedBehaviors.includes(behaviorName)) {
+      console.warn('[BehaviorManager] Attempted to set unauthorized behavior:', behaviorName);
+      return;
+    }
+
     console.log('[BehaviorManager] Setting behavior:', {
       from: this.selectedBehavior,
-      to: behaviorName
+      to: behaviorName 
     });
     this.selectedBehavior = behaviorName;
+
     this.currentBehavior = null;
+  }
+
+  public getLastBehavior(): string {
+    return this.lastBehavior;
+  }
+
+  public setLastBehavior(behaviorName: string): void {
+    this.lastBehavior = behaviorName;
+  }
+
+  // Add getter for allowed behaviors
+  public getAllowedBehaviors(): string[] {
+    return [...this.allowedBehaviors];
   }
 
   public update(entity: BehaviorEntity): void {
@@ -46,24 +87,27 @@ export class BehaviorManager {
       }
     }
 
-    if (this.currentBehavior) {
-      if (this.entityType === 'creature' && this.currentBehavior instanceof IdleBehavior) {
-        this.currentBehavior.update(entity);
-      } else if (this.entityType === 'agent') {
-        this.currentBehavior.update(entity as Agent);
-      }
-    }
+    this.currentBehavior.update(entity as BaseAgent);
   }
 
-  private getBehaviorByName(name: string): AgentBehavior {
+  public getBehaviorByName(name: string): AgentBehavior {
     switch (name) {
       case 'Forage':
         return this.forageBehavior;
       case 'Fell':
         return this.fellBehavior;
-      case 'Idle':
-      case 'Build':
       case 'Flush':
+        return this.flushBehavior;
+      case 'Graze':
+        return this.grazeBehavior;
+      case 'Wander':
+        return this.wanderBehavior;
+      case 'Fetch':
+        return this.fetchBehavior;
+      case 'Follow':
+        return this.followBehavior;
+      case 'Idle':
+        return this.idleBehavior;
       default:
         return this.idleBehavior;
     }

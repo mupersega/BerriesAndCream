@@ -303,6 +303,11 @@
       color: #95a5a6;
       &:hover { color: #bdc3c7; }
     }
+
+    &.fetch-button, &.fetch-clear {
+      color: #e91e63;
+      &:hover { color: #ff4081; }
+    }
   }
 
   .toggle-button {
@@ -323,6 +328,7 @@
     &.find-toggle { color: #2ecc71; }
     &.forage-toggle { color: #e67e22; }
     &.fell-toggle { color: #95a5a6; }
+    &.fetch-toggle { color: #e91e63; }
 
     &:hover, &:active {
       transform: none;
@@ -337,6 +343,135 @@
     
     &:hover {
       color: #ffffff;
+    }
+  }
+
+  .action-button {
+    // Add fetch button style
+    &.fetch-button {
+      color: #e91e63;  // Pink color for fetch
+      &:hover { color: #ff4081; }
+    }
+  }
+}
+
+.resource-counter {
+  position: fixed;
+  top: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 0 0 0 8px;
+  padding: 0.5rem 1rem;
+  box-shadow: 
+    inset 0 0 15px rgba(255,255,255,0.1),
+    0 4px 8px rgba(0,0,0,0.2);
+  z-index: 1000;
+  animation: slideIn 0.3s ease-out;
+
+  .resource-totals {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+
+    .resource-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+
+      .icon {
+        font-size: 1.2rem;
+      }
+
+      .count {
+        color: #fff;
+        font-size: 1rem;
+        font-weight: bold;
+        min-width: 2em;
+        text-align: right;
+      }
+    }
+  }
+}
+
+.behavior-controls {
+  display: flex;
+  gap: 0.3rem;
+  margin-right: 0.5rem;
+
+  .behavior-button {
+    width: 32px;
+    height: 32px;
+    padding: 0.4rem;
+    background: rgba(40, 40, 40, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    &:active {
+      transform: translateY(0);
+      box-shadow: none;
+    }
+
+    &.active {
+      background: rgba(60, 60, 60, 0.9);
+      border-color: rgba(255, 255, 255, 0.3);
+      box-shadow: 
+        inset 0 0 5px rgba(255,255,255,0.2),
+        0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    // Behavior-specific colors
+    &.forage {
+      color: #e67e22;
+      &:hover, &.active { color: #f39c12; }
+    }
+
+    &.hunt {
+      color: #c0392b;
+      &:hover, &.active { color: #e74c3c; }
+    }
+
+    &.rest {
+      color: #2980b9;
+      &:hover, &.active { color: #3498db; }
+    }
+
+    &.flush {
+      color: #8e44ad;
+      &:hover, &.active { color: #9b59b6; }
+    }
+
+    // Add froth behavior style (keep existing fell style)
+    &.froth {
+      color: #27ae60;  // A nice green color for milk/cream
+      &:hover, &.active { color: #2ecc71; }
+    }
+
+    &.fell {
+      color: #95a5a6;
+      &:hover, &.active { color: #bdc3c7; }
+    }
+
+    // Add fetch behavior style
+    &.fetch {
+      color: #e91e63;
+      &:hover, &.active { color: #ff4081; }
+    }
+
+    // Add follow behavior style
+    &.follow {
+      color: #3498db;
+      &:hover, &.active { color: #5dade2; }
     }
   }
 }

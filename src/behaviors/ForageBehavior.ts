@@ -1,5 +1,5 @@
 import { AgentBehavior } from './AgentBehavior';
-import { Agent } from '../Agent';
+import { BaseAgent } from '../agents/BaseAgent';
 import { Resource } from '../Resource';
 import { Dijkstra } from '../pathfinding/Dijkstra';
 import { ItemType } from '../types/ItemType';
@@ -21,12 +21,13 @@ export class ForageBehavior implements AgentBehavior {
            type === ResourceType.BerryTree;
   }
 
-  update(agent: Agent): void {
+  update(agent: BaseAgent): void {
     // Stop foraging if inventory is full and not currently harvesting
     if (!agent.hasInventorySpace() && !this.currentBerry) {
       this.currentBerry = null;
       this.harvestTimer = 0;
-      agent.setBehavior('idle');
+      agent.setBehavior('Flush');
+      agent.setLastBehavior('Forage');
       return;
     }
 
@@ -111,7 +112,7 @@ export class ForageBehavior implements AgentBehavior {
     return 'Forage';
   }
 
-  private findNearestBerry(agent: Agent): Resource | null {
+  private findNearestBerry(agent: BaseAgent): Resource | null {
     const pos = agent.getPosition();
     let nearestBerry: Resource | null = null;
     let shortestPathLength = Infinity;

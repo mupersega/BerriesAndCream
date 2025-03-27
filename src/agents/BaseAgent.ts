@@ -1,13 +1,14 @@
-import { TileType } from './types/TileType';
-import { Resource } from './Resource';
-import { BehaviorManager } from './behaviors/BehaviorManager';
-import { InventoryItem } from './types/InventoryItem';
-import { Point } from './types/Point';
-import { ResourceType } from './types/ResourceType';
-import { Dijkstra } from './pathfinding/Dijkstra';
-import { BehaviorEntity } from './behaviors/BehaviourEntity';
-import { IDrawable } from './interfaces/IDrawable';
-import { IsometricRenderer } from './rendering/IsometricRenderer';
+import { TileType } from '../types/TileType';
+import { Resource } from '../Resource';
+import { BehaviorManager } from '../behaviors/BehaviorManager';
+import { InventoryItem } from '../types/InventoryItem';
+import { Point } from '../types/Point';
+import { ResourceType } from '../types/ResourceType';
+import { Dijkstra } from '../pathfinding/Dijkstra';
+import { BehaviorEntity } from '../behaviors/BehaviourEntity';
+import { IDrawable } from '../interfaces/IDrawable';
+import { IsometricRenderer } from '../rendering/IsometricRenderer';
+import { LittleLad } from './LittleLad';
 
 interface AgentObserver {
   onHealthChange?: (health: number) => void;
@@ -15,11 +16,19 @@ interface AgentObserver {
   onStuckChange?: (isStuck: boolean) => void;
   onPathChange?: (path: Point[]) => void;
   onKnownResourcesChange?: (resources: Resource[]) => void;
+  onBehaviorChange?: (behavior: string) => void;
 }
 
-export class Agent implements BehaviorEntity, IDrawable {
-  private x: number;
-  private y: number;
+interface Vector2D {
+  x: number;
+  y: number;
+}
+
+export abstract class BaseAgent implements IDrawable {
+  private static nextId: number = 0;
+  private id: string;
+  protected x: number;
+  protected y: number;
   private map: TileType[][];
   private target: { x: number, y: number } | null = null;
   private waitTime: number = 0;
@@ -36,23 +45,41 @@ export class Agent implements BehaviorEntity, IDrawable {
   private exploredTiles: Set<string> = new Set();
   private currentPath: {x: number, y: number}[] = [];
   private readonly pathfinder = new Dijkstra();
-  private facingLeft: boolean = false;
+  protected facingLeft: boolean = false;
   private animationTime: number = 0;
-  private readonly BOUNCE_SPEED = 0.08;
-  private readonly BOUNCE_HEIGHT = 10;
-  private readonly BOUNCE_SQUASH = 0.02;
+  protected readonly MOVE_SPEED: number = 0.003;
+  protected readonly MAX_SPEED: number = 0.03;
+  protected readonly FRICTION: number = 0.85;
+  protected readonly PUSH_FORCE: number = 0.8;
+  protected readonly BOUNCE_SPEED: number = 0.08;
+  protected readonly BOUNCE_HEIGHT: number = 10;
+  protected readonly BOUNCE_SQUASH: number = 0.02;
   private isMoving: boolean = false;
+  private agentType: string = 'unset';
 
   // Inventory system
   private readonly INVENTORY_SIZE = 10;
   private inventory: (InventoryItem | null)[] = [];
-  private readonly MAX_STACK_SIZE = 5;
+  private readonly MAX_STACK_SIZE = 1;
 
-  private currentBehavior: string = 'Idle';  // Add this property
+  private allowedBehaviors: string[] = ['Forage', 'Flush', 'Idle'];  // Default behaviors
+  protected currentBehavior: string = 'Forage';  // Default starting behavior
 
   private observers: AgentObserver[] = [];
 
-  constructor(map: TileType[][], resources: Resource[], startX?: number, startY?: number) {
+  private velocity: Vector2D = { x: 0, y: 0 };
+  private acceleration: Vector2D = { x: 0, y: 0 };
+  private velocityMultiplier: number = 1;
+
+  protected readonly DEFAULT_BOUNCE_HEIGHT: number = 10;
+  protected readonly DEFAULT_BOUNCE_SPEED: number = 0.08;
+  protected readonly DEFAULT_BOUNCE_SQUASH: number = 0.02;
+  protected bounceHeight: number;
+  protected bounceSpeed: number;
+  protected bounceSquash: number;
+
+  constructor(map: TileType[][], startX?: number, startY?: number, allowedBehaviors?: string[], agentType?: string) {
+    this.id = `${this.agentType || 'agent'}_${BaseAgent.nextId++}`;
     this.map = map;
     
     if (startX === undefined || startY === undefined) {
@@ -66,8 +93,16 @@ export class Agent implements BehaviorEntity, IDrawable {
     }
     
     this.currentHealth = this.maxHealth;
-    this.behaviorManager = new BehaviorManager(resources, 'agent');
+    this.allowedBehaviors = allowedBehaviors || ['Forage', 'Flush'];  // Use provided behaviors or defaults
+    this.behaviorManager = new BehaviorManager(this.allowedBehaviors);
     this.inventory = new Array(this.INVENTORY_SIZE).fill(null);
+    this.currentBehavior = this.allowedBehaviors[0];  // Start with first allowed behavior
+    this.agentType = agentType || 'agent';
+
+    // Initialize bounce properties with defaults
+    this.bounceHeight = this.DEFAULT_BOUNCE_HEIGHT;
+    this.bounceSpeed = this.DEFAULT_BOUNCE_SPEED;
+    this.bounceSquash = this.DEFAULT_BOUNCE_SQUASH;
   }
 
   public update(): void {
@@ -81,6 +116,9 @@ export class Agent implements BehaviorEntity, IDrawable {
     // Update behavior
     this.behaviorManager.update(this);
 
+    // Update physics
+    this.updatePhysics();
+
     // Update movement if we have a target
     if (this.hasTarget() && this.waitTime <= 0) {
       this.updateMovement();
@@ -92,7 +130,51 @@ export class Agent implements BehaviorEntity, IDrawable {
     }
   }
 
+  private updatePhysics(): void {
+    // Apply acceleration to velocity
+    this.velocity.x += this.acceleration.x;
+    this.velocity.y += this.acceleration.y;
+
+    // Apply friction
+    this.velocity.x *= this.FRICTION;
+    this.velocity.y *= this.FRICTION;
+
+    // Apply velocity multiplier
+    this.velocity.x *= this.velocityMultiplier;
+    this.velocity.y *= this.velocityMultiplier;
+
+    // Limit speed
+    const speed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y);
+    if (speed > this.MAX_SPEED) {
+      this.velocity.x = (this.velocity.x / speed) * this.MAX_SPEED;
+      this.velocity.y = (this.velocity.y / speed) * this.MAX_SPEED;
+    }
+
+    // Update position
+    const newX = this.x + this.velocity.x;
+    const newY = this.y + this.velocity.y;
+
+    // Only move if new position is valid
+    if (!this.isWater(newX, newY)) {
+      this.x = newX;
+      this.y = newY;
+    } else {
+      // Bounce off water
+      this.velocity.x *= -0.5;
+      this.velocity.y *= -0.5;
+    }
+
+    // Reset acceleration
+    this.acceleration.x = 0;
+    this.acceleration.y = 0;
+  }
+
   public isWater(x: number, y: number): boolean {
+    // Handle NaN values
+    if (isNaN(x) || isNaN(y)) {
+        return true; // Treat invalid coordinates as water
+    }
+
     // Convert to integers and check bounds
     const ix = Math.round(x);
     const iy = Math.round(y);
@@ -110,54 +192,42 @@ export class Agent implements BehaviorEntity, IDrawable {
     const dx = targetX - this.x;
     const dy = targetY - this.y;
     
-    // Update facing direction
-    if (Math.abs(dx) > 0.01) {
-        this.facingLeft = dx < 0;
+    // Update facing direction based on isometric movement
+    // In isometric view, "left" is when moving more west than south
+    // and "right" is when moving more east than north
+    const isometricDirection = dx - dy;
+    if (Math.abs(isometricDirection) > 0.01) {
+      this.facingLeft = isometricDirection < 0;
     }
     
-    const moveSpeed = 0.008;
-    const PUSH_STRENGTH = 0.9;
-    
-    // Calculate movement
-    const distance = Math.hypot(dx, dy);
-    if (distance < 0.1) {
-        this.x = targetX;
-        this.y = targetY;
-        this.isMoving = false;
-        return;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    if (distance < 0.8) {
+      this.velocity.x = 0;
+      this.velocity.y = 0;
+      this.isMoving = false;
+      return;
     }
     
-    // Set isMoving to true when actually moving
     this.isMoving = true;
     
-    // Try to move
-    const moveX = (dx / distance) * moveSpeed;
-    const moveY = (dy / distance) * moveSpeed;
-    const newX = this.x + moveX;
-    const newY = this.y + moveY;
+    const forceX = (dx / distance) * this.MOVE_SPEED;
+    const forceY = (dy / distance) * this.MOVE_SPEED;
     
-    // Check if new position is blocked
-    if (this.isWater(newX, newY)) {
-        // If blocked, push away from obstacle with stronger force
-        const obstacleX = Math.floor(newX);
-        const obstacleY = Math.floor(newY);
-        
-        // Push directly away from obstacle
-        this.x += (this.x - obstacleX) * PUSH_STRENGTH;
-        this.y += (this.y - obstacleY) * PUSH_STRENGTH;
-    } else {
-        this.x = newX;
-        this.y = newY;
-    }
+    this.applyForce(forceX, forceY);
+  }
+
+  public applyForce(forceX: number, forceY: number): void {
+    this.acceleration.x += forceX;
+    this.acceleration.y += forceY;
   }
 
   public draw(ctx: CanvasRenderingContext2D, screenX: number, screenY: number): void {
     const spritesheet = window.gameState.getSpritesheetSync();
     if (!spritesheet?.complete) return;
 
-    // Update bounce animation with debug logging
+    // Update bounce animation
     if (this.isMoving) {
-      this.animationTime = (this.animationTime + this.BOUNCE_SPEED) % (Math.PI * 2);
+      this.animationTime = (this.animationTime + this.bounceSpeed) % (Math.PI * 2);
     } else {
       this.animationTime = 0;
     }
@@ -167,29 +237,30 @@ export class Agent implements BehaviorEntity, IDrawable {
     const modifiedBounce = Math.pow(bounceProgress, 1.5);
     const pauseAtBottom = bounceProgress < 0.1 ? 0 : modifiedBounce;
     const bounceOffset = this.isMoving ? 
-      pauseAtBottom * this.BOUNCE_HEIGHT : 0;
+      pauseAtBottom * this.bounceHeight : 0;
 
     // Adjust squash and stretch
     const scaleX = this.isMoving ? 
-      1 + ((1 - bounceProgress) * this.BOUNCE_SQUASH) : 1;
+      1 + ((1 - bounceProgress) * this.bounceSquash) : 1;
     const scaleY = this.isMoving ? 
-      1 - ((1 - bounceProgress) * this.BOUNCE_SQUASH) : 1;
+      1 - ((1 - bounceProgress) * this.bounceSquash) : 1;
 
     // Draw shadow
     this.drawShadow(ctx, screenX, screenY);
 
-    // Draw health bar
-    this.drawHealthBar(ctx, screenX, screenY);
+    // Get sprite position and size from the extended class
+    const spritePos = this.getSpritesheetPosition();
+    const spriteSize = this.getSpriteSize();
 
     // Draw agent sprite with bounce and scale
     IsometricRenderer.drawSprite(
       ctx,
       spritesheet,
       {
-        x: this.facingLeft ? 64 : 96,
-        y: 160,
-        width: 32,
-        height: 32,
+        x: spritePos.x,
+        y: spritePos.y,
+        width: spriteSize.width,
+        height: spriteSize.height,
         anchorBottom: true,
         verticalOffset: 0,
         additionalOffset: bounceOffset,
@@ -206,7 +277,7 @@ export class Agent implements BehaviorEntity, IDrawable {
   private drawShadow(ctx: CanvasRenderingContext2D, x: number, y: number): void {
     const verticalOffset = IsometricRenderer.getHeightOffset(this.x, this.y);
     const bounceOffset = this.isMoving ? 
-        (1 - Math.cos(this.animationTime)) * this.BOUNCE_HEIGHT * 0.5 : 0;
+        (1 - Math.cos(this.animationTime)) * this.bounceHeight * 0.5 : 0;
     
     // Shadow parameters
     const shadowBaseWidth = 16;
@@ -314,7 +385,7 @@ export class Agent implements BehaviorEntity, IDrawable {
             this.facingLeft = isometricDirection < 0;
         }
         
-        if (distance < 0.1) {
+        if (distance < 0.8) {
             this.advancePath();
             if (!this.hasPath()) {
                 this.clearTarget();
@@ -449,32 +520,10 @@ export class Agent implements BehaviorEntity, IDrawable {
     return this.isDead_;
   }
 
-  public addKnownResource(resource: Resource): void {
-    const pos = resource.getPosition();
-    const key = `${Math.round(pos.x)},${Math.round(pos.y)}`;
-    
-    if (!resource.isDepleted()) {
-      this.knownResources.set(key, resource);
-    }
-  }
-
   public removeKnownResource(resource: Resource): void {
     const pos = resource.getPosition();
     const key = `${Math.round(pos.x)},${Math.round(pos.y)}`;
     this.knownResources.delete(key);
-  }
-
-  public getKnownResources(): Resource[] {
-    // Filter out any depleted resources and remove them from the map
-    const resources = Array.from(this.knownResources.values());
-    const validResources = resources.filter(resource => {
-      if (resource.isDepleted()) {
-        this.removeKnownResource(resource);
-        return false;
-      }
-      return true;
-    });
-    return validResources;
   }
 
   public addExploredTile(x: number, y: number): void {
@@ -580,14 +629,35 @@ export class Agent implements BehaviorEntity, IDrawable {
     return this.behaviorManager;
   }
 
+  public setNewBehavior(behaviorName: string): void {
+    this.behaviorManager.setLastBehavior('Idle');
+    this.behaviorManager.setBehavior(behaviorName);
+  }
+
   public setBehavior(behaviorName: string): void {
+    if (!this.canUseBehavior(behaviorName)) {
+      console.warn(`[Agent] Attempted to set unauthorized behavior: ${behaviorName}`);
+      return;
+    }
+
     console.log('[Agent] Setting behavior:', { 
-        from: this.currentBehavior, 
-        to: behaviorName 
+      from: this.currentBehavior, 
+      to: behaviorName 
     });
     this.currentBehavior = behaviorName;
     this.behaviorManager.setBehavior(behaviorName);
     this.clearTarget();
+    this.notifyBehaviorChange();
+  }
+
+  public setLastBehavior(behaviorName: string): void {
+    if (this.behaviorManager.getLastBehavior() !== behaviorName) {
+      this.behaviorManager.setLastBehavior(behaviorName);
+    }
+  }
+
+  public getLastBehavior(): string {
+    return this.behaviorManager.getLastBehavior();
   }
 
   // Add observer methods
@@ -627,31 +697,63 @@ export class Agent implements BehaviorEntity, IDrawable {
     });
   }
 
-  private notifyKnownResourcesChange() {
+  private notifyBehaviorChange() {
     this.observers.forEach(observer => {
-      observer.onKnownResourcesChange?.(this.getKnownResources());
+      observer.onBehaviorChange?.(this.currentBehavior);
     });
   }
 
-  // Add this method for debugging
-  public debugKnownResources(): void {
-    console.log('[Agent] Known Resources:');
-    this.getKnownResources().forEach(resource => {
-      const pos = resource.getPosition();
-      console.log(`- ${ResourceType[resource.getType()]} at (${pos.x}, ${pos.y}), amount: ${resource.getAmount()}`);
-    });
+  // Add method to check if behavior is allowed
+  public canUseBehavior(behaviorName: string): boolean {
+    return this.allowedBehaviors.includes(behaviorName);
   }
 
-  // Add static method for generating agents
-  public static generateAgents(map: TileType[][], resources: Resource[], count: number): Agent[] {
-    const agents: Agent[] = [];
-    
-    for (let i = 0; i < count; i++) {
-      // Create new agent with random valid position
-      const agent = new Agent(map, resources);
-      agents.push(agent);
-    }
-
-    return agents;
+  // Add getter for allowed behaviors
+  public getAllowedBehaviors(): string[] {
+    return [...this.allowedBehaviors];
   }
-} 
+
+  public adjustPosition(dx: number, dy: number): void {
+    // Convert position adjustment to force
+    this.applyForce(dx * this.PUSH_FORCE, dy * this.PUSH_FORCE);
+  }
+
+  public getVelocity(): Vector2D {
+    return { ...this.velocity };
+  }
+
+  public getAgentType(): string {
+    return this.agentType;
+  }
+
+  // Add these abstract methods that specific agents must implement
+  protected abstract getSpritesheetPosition(): { x: number, y: number };
+  protected abstract getSpriteSize(): { width: number, height: number };
+
+  // Add getId method
+  public getId(): string {
+    return this.id;
+  }
+
+  public setVelocityMultiplier(multiplier: number): void {
+    this.velocityMultiplier = Math.max(0, multiplier);
+  }
+
+  public setBounceHeight(height: number): void {
+    this.bounceHeight = Math.max(0, height); // Ensure non-negative
+  }
+
+  public setBounceSpeed(speed: number): void {
+    this.bounceSpeed = Math.max(0, speed); // Ensure non-negative
+  }
+
+  public setBounceSquash(squash: number): void {
+    this.bounceSquash = Math.max(0, squash); // Ensure non-negative
+  }
+
+  public resetBounceProperties(): void {
+    this.bounceHeight = this.DEFAULT_BOUNCE_HEIGHT;
+    this.bounceSpeed = this.DEFAULT_BOUNCE_SPEED;
+    this.bounceSquash = this.DEFAULT_BOUNCE_SQUASH;
+  }
+}

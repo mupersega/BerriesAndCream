@@ -1,5 +1,6 @@
 export enum ItemType {
   Berry = 'berry',
   Cream = 'cream',
-  Wood = 'wood'
+  Wood = 'wood',
+  Stone = 'stone'
 } 

@@ -3,5 +3,12 @@ export enum ResourceType {
     BerryPile,
     BerryTree,
     Corpse,
-    Tree
-  }
+    Tree,
+}
+
+export enum ResourceCount {
+    Berries,
+    Wood,
+    Cream,
+    Stone,
+}

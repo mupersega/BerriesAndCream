@@ -1,6 +1,6 @@
 import { StructureType } from './types/StructureType';
 import { Point } from './types/Point';
-import { TileType } from './types/TileType';
+import { IsometricRenderer } from './rendering/IsometricRenderer';
 
 interface StructureConfig {
   sprite: {
@@ -13,6 +13,15 @@ interface StructureConfig {
 }
 
 export const STRUCTURE_CONFIGS: Record<StructureType, StructureConfig> = {
+  [StructureType.Headquarters]: {
+    sprite: {
+      x: 128,
+      y: 128,
+      width: 64,
+      height: 64
+    },
+    verticalOffset: -16
+  },
   [StructureType.Farm]: {
     sprite: {
       x: 128,
@@ -107,37 +116,25 @@ export class Structure {
   }
 
   public draw(ctx: CanvasRenderingContext2D, x: number, y: number): void {
-    const spritesheet = window.gameState.getSpritesheet();
-    
-    let heightFactor = 0;
-    const tileType = window.gameState.getTileAt(this.position.x, this.position.y);
-    switch (tileType) {
-      case TileType.DeepWater: heightFactor = 0; break;
-      case TileType.Water: heightFactor = 0.15; break;
-      case TileType.Sand: heightFactor = 0.3; break;
-      case TileType.Grass: heightFactor = 0.45; break;
-      case TileType.Highlands: heightFactor = 0.7; break;
-      case TileType.Dirt: heightFactor = 0.8; break;
-      case TileType.Stone: heightFactor = 0.9; break;
-      case TileType.Snow: heightFactor = 1; break;
-    }
+    const spritesheet = window.gameState.getSpritesheetSync();
+    if (!spritesheet?.complete) return;
 
-    const tileHeight = 16;
-    const verticalOffset = heightFactor * tileHeight;
-
-    if (spritesheet?.complete) {
-      const sprite = this.config.sprite;
-      ctx.drawImage(
-        spritesheet,
-        sprite.x,
-        sprite.y,
-        sprite.width,
-        sprite.height,
-        x - sprite.width/2,
-        y - verticalOffset - sprite.height + (tileHeight/2) + this.config.verticalOffset,
-        sprite.width,
-        sprite.height
-      );
-    }
+    // Draw structure using IsometricRenderer
+    IsometricRenderer.drawSprite(
+      ctx,
+      spritesheet,
+      {
+        x: this.config.sprite.x,
+        y: this.config.sprite.y,
+        width: this.config.sprite.width,
+        height: this.config.sprite.height,
+        anchorBottom: true,
+        verticalOffset: this.config.verticalOffset
+      },
+      x,
+      y,
+      this.position.x,
+      this.position.y
+    );
   }
 }

@@ -1,5 +1,5 @@
 import { AgentBehavior } from './AgentBehavior';
-import { Agent } from '../Agent';
+import { Agent } from '../agents/BaseAgent';
 
 export class IdleBehavior implements AgentBehavior {
     public update(agent: Agent): void {

@@ -1,23 +1,24 @@
 import { AgentBehavior } from './AgentBehavior';
-import { Agent } from '../Agent';
 import { Structure } from '../Structure';
-import { Dijkstra } from '../pathfinding/Dijkstra';
+import { ItemType } from '../types/ItemType';
+import { ResourceCount } from '../types/ResourceType';
+import { gameState } from '../state/GameState';
+import { BaseAgent } from '../agents/BaseAgent';
 
 export class FlushBehavior implements AgentBehavior {
-  private readonly DEPOSIT_DELAY = 30;  // Half second at 60fps
+  private readonly DEPOSIT_DELAY = 30;
   private depositTimer: number = 0;
   private currentStructure: Structure | null = null;
-  private readonly pathfinder = new Dijkstra();
 
   getName(): string {
     return 'Flush';
   }
 
-  update(agent: Agent): void {
+  update(agent: BaseAgent): void {
+
     // If inventory is empty, switch back to previous behavior
-    if (agent.getInventory().every(item => item === null)) {
-      console.log('[Flush] Inventory empty, switching to Explore');
-      agent.setBehavior('Explore');
+    if (agent.getInventory().every((item) => item === null)) {
+      agent.setBehavior(agent.getLastBehavior());
       return;
     }
 
@@ -27,14 +28,13 @@ export class FlushBehavior implements AgentBehavior {
       this.depositTimer--;
 
       if (this.depositTimer === 0) {
-        this.depositItems(agent, this.currentStructure);
+        this.depositItems(agent);
         
         // Check if we still have items to deposit
         if (agent.getInventory().every(item => item === null)) {
           this.currentStructure = null;
           agent.setBehavior('Explore');
         } else {
-          // Continue depositing if we have more items
           this.depositTimer = this.DEPOSIT_DELAY;
         }
       }
@@ -45,14 +45,18 @@ export class FlushBehavior implements AgentBehavior {
     if (!agent.hasTarget()) {
       const pos = agent.getPosition();
       const nearbyStructure = this.findNearestStructure(agent);
-
-      if (nearbyStructure && 
-          Math.hypot(nearbyStructure.getPosition().x - pos.x,
-                    nearbyStructure.getPosition().y - pos.y) <= 1) {
-        console.log('[Flush] Starting deposit at structure');
-        this.currentStructure = nearbyStructure;
-        this.depositTimer = this.DEPOSIT_DELAY;
-        return;
+      
+      if (nearbyStructure) {
+        const distance = Math.hypot(
+          nearbyStructure.getPosition().x - pos.x,
+          nearbyStructure.getPosition().y - pos.y
+        );
+        
+        if (distance <= 1) {
+          this.currentStructure = nearbyStructure;
+          this.depositTimer = this.DEPOSIT_DELAY;
+          return;
+        }
       }
     }
 
@@ -61,20 +65,19 @@ export class FlushBehavior implements AgentBehavior {
       const nearestStructure = this.findNearestStructure(agent);
       if (nearestStructure) {
         const structurePos = nearestStructure.getPosition();
-        console.log(`[Flush] Moving to structure at (${structurePos.x}, ${structurePos.y})`);
         agent.setTarget(structurePos.x, structurePos.y);
       }
     }
   }
 
-  private findNearestStructure(agent: Agent): Structure | null {
+  private findNearestStructure(agent: BaseAgent): Structure | null {
     const pos = agent.getPosition();
     let nearestStructure: Structure | null = null;
     let shortestDistance = Infinity;
 
-    for (const structure of window.gameState.structures) {
-      if (!structure.isComplete()) continue;
+    const structures = window.gameState.getStructures();
 
+    for (const structure of structures) {
       const structurePos = structure.getPosition();
       const distance = Math.hypot(
         structurePos.x - pos.x,
@@ -90,16 +93,31 @@ export class FlushBehavior implements AgentBehavior {
     return nearestStructure;
   }
 
-  private depositItems(agent: Agent, structure: Structure): void {
+  private depositItems(agent: BaseAgent): void {
+
     const inventory = agent.getInventory();
     
-    inventory.forEach((item, index) => {
+    inventory.forEach((item) => {
       if (item) {
-        const amountStored = structure.store(item.type, item.quantity);
-        if (amountStored > 0) {
-          agent.removeFromInventory(item.type, amountStored);
-          console.log(`[Flush] Deposited ${amountStored} ${item.type} in structure`);
+        
+        // Directly add to gameState resource pool
+        switch (item.type) {
+          case ItemType.Berry:
+            gameState.addToResourceCount(ResourceCount.Berries, item.quantity);
+            break;
+          case ItemType.Wood:
+            gameState.addToResourceCount(ResourceCount.Wood, item.quantity);
+            break;
+          case ItemType.Cream:
+            gameState.addToResourceCount(ResourceCount.Cream, item.quantity);
+            break;
+          case ItemType.Stone:
+            gameState.addToResourceCount(ResourceCount.Stone, item.quantity);
+            break;
         }
+        
+        // Clear the inventory slot
+        agent.removeFromInventory(item.type, item.quantity);
       }
     });
   }

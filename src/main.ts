@@ -2,16 +2,15 @@ import './style.scss'
 
 import { Dijkstra } from './pathfinding/Dijkstra';
 import { TileType } from './types/TileType';
-import { initInfoPanel, initSelectedTilePanel, updateSelectedTilePanel, initActionPanel, initHoverInfo } from './UI/components';
-import { StructureType } from './types/StructureType';
+import { initInfoPanel, initSelectedTilePanel, updateSelectedTilePanel, initActionPanel, initHoverInfo, initResourceCounter } from './UI/components';
 import { Point } from './types/Point';
 import { gameState } from './state/GameState';
 import { RenderSystem } from './rendering/RenderingSystem';
-import { Agent } from './Agent';
+import { BaseAgent } from './agents/BaseAgent';
 
 import { Resource } from './Resource';
-import { ResourceType } from './types/ResourceType';
 import { IDrawable } from './interfaces/IDrawable';
+import { Quadtree } from './state/Quadtree';
 
 type Node = {
   position: { x: number, y: number };
@@ -355,9 +354,6 @@ function generateTileMap(width: number, height: number, seed?: number): TileType
   return map;
 }
 
-// Create a global noise generator instance
-const noise = new HeightMapGenerator(100, 100);
-
 let canvas: HTMLCanvasElement;
 let ctx: CanvasRenderingContext2D;
 let backgroundCanvas: HTMLCanvasElement;
@@ -378,6 +374,7 @@ interface DebugFlags {
   showFindableTiles: boolean;
   showForageableTiles: boolean;
   showFellableTiles: boolean;
+  showFetchableTiles: boolean;
   isPaused: boolean;
   agentDebug: boolean[];
   toggleAgentDebug: (index: number) => void;
@@ -386,21 +383,106 @@ interface DebugFlags {
 // Make DEBUG globally accessible
 window.DEBUG = {
   isPaused: false,
+  showFindableTiles: false,
+  showForageableTiles: false,
+  showFellableTiles: false,
+  showFetchableTiles: false,
   agentDebug: [],
   toggleAgentDebug: (index: number) => {
     window.DEBUG.agentDebug[index] = !window.DEBUG.agentDebug[index];
-    updateInfoPanel();  // Make sure this is called to refresh the UI
-    console.log(`Toggled debug for agent ${index}:`, window.DEBUG.agentDebug[index]); // Add logging
+    updateInfoPanel();
+    console.log(`Toggled debug for agent ${index}:`, window.DEBUG.agentDebug[index]);
   }
 };
+
+// Add at the top with other globals
+const agentQuadtree = new Quadtree({
+  x: 0,
+  y: 0,
+  width: mapWidth,
+  height: mapHeight
+});
 
 // Modify the gameLoop function
 function gameLoop() {
   if (!window.DEBUG.isPaused) {
-    // Update agents
+    // Clear quadtree at the start of each frame
+    agentQuadtree.clear();
+    
+    // Update agents and add them to quadtree
     gameState.getAgents().forEach(agent => {
-      if (agent) {
+      if (agent && !agent.isDead()) {
         agent.update();
+        
+        // Add agent to quadtree
+        const pos = agent.getPosition();
+        agentQuadtree.insert({
+          x: pos.x,
+          y: pos.y,
+          data: agent
+        });
+      }
+    });
+
+    // Example: Check for collisions between agents
+    gameState.getAgents().forEach(agent => {
+      if (agent && !agent.isDead()) {
+        const pos = agent.getPosition();
+        
+        // Increase query area to detect agents further away
+        const searchRadius = 2; // Increased from 1
+        const nearbyPoints = agentQuadtree.query({
+          x: pos.x - searchRadius,
+          y: pos.y - searchRadius,
+          width: searchRadius * 2,
+          height: searchRadius * 2
+        });
+
+        // Filter out self and process nearby agents
+        const nearbyAgents = nearbyPoints
+          .filter(point => point.data !== agent)
+          .map(point => point.data);
+
+        // Enhanced collision response
+        nearbyAgents.forEach(otherAgent => {
+          const otherPos = otherAgent.getPosition();
+          const dx = pos.x - otherPos.x;
+          const dy = pos.y - otherPos.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          
+          const minDistance = 1.0;
+          
+          if (distance < minDistance) {
+            // Calculate normalized direction vector
+            const nx = dx / distance;
+            const ny = dy / distance;
+            
+            // Calculate perpendicular vector (rotated 90 degrees clockwise)
+            // This creates a rightward sidestep motion
+            const px = ny;  // Perpendicular x component
+            const py = -nx; // Perpendicular y component
+            
+            // Calculate relative velocity
+            const v1 = agent.getVelocity();
+            const v2 = otherAgent.getVelocity();
+            const relativeVx = v1.x - v2.x;
+            const relativeVy = v1.y - v2.y;
+            
+            // Calculate push strength with overlap
+            const overlap = minDistance - distance;
+            const relativeSpeed = nx * relativeVx + ny * relativeVy;
+            const pushStrength = Math.max(0.3, overlap * 0.8 - relativeSpeed * 0.5);
+            
+            // Combine separation force with rightward sidestep
+            const sideStepStrength = 0.4; // Adjust this to control sidestep strength
+            const forceX = (nx * pushStrength) + (px * sideStepStrength);
+            const forceY = (ny * pushStrength) + (py * sideStepStrength);
+            
+            // Apply forces to both agents
+            agent.applyForce(forceX, forceY);
+            otherAgent.applyForce(-forceX, -forceY);
+          }
+        });
       }
     });
   }
@@ -515,6 +597,10 @@ function setupCanvases(): {
   `;
   const mainCtx = mainCanvas.getContext('2d')!;
 
+  // antialiasing
+  // mainCtx.imageSmoothingEnabled = true;
+  // mainCtx.imageSmoothingQuality = 'low';
+
   // Add mouse move listener
   mainCanvas.addEventListener('mousemove', handleMouseMove);
 
@@ -611,35 +697,6 @@ function updateInfoPanel() {
     `;
     tileInfo.outerHTML = tileInfoContent;
   }
-    
-  //   hoverContent += `
-  //     <div class="hover-info">
-  //       <h4>Tile Info</h4>
-  //       <p>Position: (${mouseX}, ${mouseY})</p>
-  //       <p>Type: ${TileType[tile]}</p>
-
-
-  //   `;
-  // }
-  
-  // Resource info (when hovering)
-  // if (hoveredResource) {
-  //   const amount = hoveredResource.getAmount();
-  //   const maxAmount = hoveredResource.getMaxAmount();
-  //   const filledBars = Math.max(0, Math.min(10, Math.ceil((amount / maxAmount) * 10)));
-  //   const emptyBars = Math.max(0, 10 - filledBars);
-  //   const bars = '█'.repeat(filledBars) + '□'.repeat(emptyBars);
-    
-  //   hoverContent += `
-  //     <div class="hover-info">
-  //       <h4>Resource Info</h4>
-  //       <p>Type: ${ResourceType[hoveredResource.getType()]}</p>
-  //       <p class="stat-line">${amount}/${maxAmount} <span class="bars">${bars}</span></p>
-  //     </div>
-  //   `;
-  // }s
-
-  // hoverContainer.innerHTML = hoverContent;
 }
 
 // Split render into static and dynamic parts
@@ -692,24 +749,6 @@ const pathfinder = new Dijkstra();
 pathfinder.setVisualizationCallback((nodes) => {
   renderPathfinding(nodes);
 });
-
-function renderIsometricMap(map: TileType[][], ctx: CanvasRenderingContext2D) {
-  const tileWidth = 32;  // Width of a single tile in isometric view
-  const tileHeight = 16; // Height of a single tile in isometric view
-
-  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-  for (let y = 0; y < map.length; y++) {
-    for (let x = 0; x < map[y].length; x++) {
-      // Calculate isometric position
-      const isoX = (x - y) * tileWidth / 2;
-      const isoY = (x + y) * tileHeight / 2;
-
-      // Draw the tile at the isometric position
-      drawIsometricTile(ctx, isoX, isoY, map[y][x]);
-    }
-  }
-}
 
 function createNoisePattern(color: string, variation: number): CanvasPattern | null {
   const patternCanvas = document.createElement('canvas');
@@ -1109,13 +1148,13 @@ window.gameState = gameState;
 // Add the behavior change handler
 window.changeBehavior = (agentIndex: number, behaviorName: string) => {
   if (gameState.getAgents()[agentIndex]) {
-    gameState.getAgents()[agentIndex].setBehavior(behaviorName);
+    gameState.getAgents()[agentIndex].setNewBehavior(behaviorName);
     console.log(`Changed agent ${agentIndex} behavior to ${behaviorName}`);
   }
 };
 
 // Add this function to draw the agent's path
-function drawAgentPath(agent: Agent, path: Point[]) {
+function drawAgentPath(agent: BaseAgent, path: Point[]) {
   // Early return if debug isn't enabled for this agent
   const agentIndex = gameState.getAgents().indexOf(agent);
   if (!window.DEBUG.agentDebug[agentIndex]) return;
@@ -1313,10 +1352,8 @@ function drawTileOverlays(ctx: CanvasRenderingContext2D) {
   ctx.fillStyle = 'rgba(255, 165, 0, 0.3)';
   ctx.fill();
 
-  // Start new path for fellable tiles
-  ctx.beginPath();
-
   // Draw fellable tiles
+  ctx.beginPath();
   if (window.DEBUG.showFellableTiles) {
     gameState.getFellableTiles().forEach(tile => {
       const tileType = gameState.getTileAt(tile.x, tile.y);
@@ -1333,9 +1370,29 @@ function drawTileOverlays(ctx: CanvasRenderingContext2D) {
       ctx.closePath();
     });
   }
-
-  // Fill all fellable tiles at once
   ctx.fillStyle = 'rgba(128, 128, 128, 0.3)';
+  ctx.fill();
+
+  // Draw fetchable tiles
+  ctx.beginPath();
+  if (window.DEBUG.showFetchableTiles) {
+    gameState.getFetchableTiles().forEach(tile => {
+      const tileType = gameState.getTileAt(tile.x, tile.y);
+      const heightFactor = getTileHeightFactor(tileType);
+      const verticalOffset = heightFactor * tileSize;
+      
+      const isoX = (tile.x - tile.y) * tileSize;
+      const isoY = (tile.x + tile.y) * (tileSize/2) - verticalOffset;
+      
+      ctx.moveTo(isoX, isoY);
+      ctx.lineTo(isoX + tileSize, isoY + tileSize/2);
+      ctx.lineTo(isoX, isoY + tileSize);
+      ctx.lineTo(isoX - tileSize, isoY + tileSize/2);
+      ctx.closePath();
+    });
+  }
+  // Light pink for fetch overlay
+  ctx.fillStyle = 'rgba(255, 192, 203, 0.6)';
   ctx.fill();
 }
 
@@ -1400,20 +1457,6 @@ function initScrollZones() {
       updateScrollDirection();
     }
   });
-
-  // // Handle mouse scroll zones
-  // Object.entries(zones).forEach(([className, direction]) => {
-  //   const element = document.querySelector(`.${className}`);
-  //   if (element) {
-  //     element.addEventListener('mouseenter', () => {
-  //       scrollDirection = direction;
-  //     });
-
-  //     element.addEventListener('mouseleave', () => {
-  //       scrollDirection = { x: 0, y: 0 };
-  //     });
-  //   }
-  // });
 }
 
 function updateScrollDirection() {
@@ -1433,3 +1476,6 @@ function updateScrollDirection() {
     scrollDirection.y /= length;
   }
 }
+
+// Add this with your other UI initialization calls
+initResourceCounter();

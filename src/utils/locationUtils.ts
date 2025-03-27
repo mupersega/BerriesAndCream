@@ -5,6 +5,7 @@ import { Point } from '../types/Point';
 export function findSuitableBuildingLocation(map: TileType[][], structureType: StructureType): Point | null {
     // Define suitable tile types for each structure type
     const suitableTiles: Record<StructureType, TileType[]> = {
+        [StructureType.Headquarters]: [TileType.Grass, TileType.Highlands],
         [StructureType.Farm]: [TileType.Grass, TileType.Dirt],
         [StructureType.Warehouse]: [TileType.Grass, TileType.Dirt, TileType.Stone],
         [StructureType.Smithy]: [TileType.Stone, TileType.Dirt],

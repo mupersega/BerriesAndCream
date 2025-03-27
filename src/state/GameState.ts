@@ -1,27 +1,32 @@
-import { Agent } from '../Agent';
+import { BaseAgent } from '../agents/BaseAgent';
+import { LittleLad } from '../agents/LittleLad';
 import { Resource } from '../Resource';
 import { Structure } from '../Structure';
 import { TileType } from '../types/TileType';
 import { StructureType } from '../types/StructureType';
 import { findSuitableBuildingLocation } from '../utils/locationUtils';
 import { Point } from '../types/Point';
+import { ResourceCount } from '../types/ResourceType';
+import { Cow } from '../agents/Cow';
 
 export class GameState {
   protected map: TileType[][] = [];
   private resources: Resource[] = [];
   private structures: Structure[] = [];
-  private agents: Agent[] = [];
+  private agents: BaseAgent[] = [];
   private spritesheet: HTMLImageElement | null = null;
   private spritesheetLoadPromise: Promise<HTMLImageElement> | null = null;
   private selectedTile: Point | null = null;
   private findableTiles: Set<string> = new Set();
   private forageableTiles: Set<string> = new Set();
   private fellableTiles: Set<string> = new Set();
+  private fetchableTiles: Set<string> = new Set();
 
   // Individual area visibility flags
   private showFindableTiles: boolean = true;
   private showForageableTiles: boolean = true;
   private showFellableTiles: boolean = true;
+  private showFetchableTiles: boolean = true;
 
   // Visibility getters
   public isShowingFindableTiles(): boolean {
@@ -36,6 +41,10 @@ export class GameState {
     return this.showFellableTiles;
   }
 
+  public isShowingFetchableTiles(): boolean {
+    return this.showFetchableTiles;
+  }
+
   // Visibility toggles
   public toggleFindableTiles(): void {
     this.showFindableTiles = !this.showFindableTiles;
@@ -47,6 +56,10 @@ export class GameState {
 
   public toggleFellableTiles(): void {
     this.showFellableTiles = !this.showFellableTiles;
+  }
+
+  public toggleFetchableTiles(): void {
+    this.showFetchableTiles = !this.showFetchableTiles;
   }
 
   // Add a method to preload the spritesheet
@@ -149,12 +162,12 @@ export class GameState {
   }
 
   // Add agent methods
-  addAgent(agent: Agent) {
+  addAgent(agent: BaseAgent) {
     this.agents.push(agent);
     console.log('Agent added:', agent);
   }
 
-  removeAgent(agent: Agent) {
+  removeAgent(agent: BaseAgent) {
     const index = this.agents.indexOf(agent);
     if (index > -1) {
       agent.cleanup?.();
@@ -163,7 +176,7 @@ export class GameState {
     }
   }
 
-  getAgents(): Agent[] {
+  getAgents(): BaseAgent[] {
     return this.agents;
   }
 
@@ -196,7 +209,7 @@ export class GameState {
   }
 
   public generateInitialStructures(): void {
-    const structuresToAdd = [{ type: StructureType.Farm, count: 2 }];
+    const structuresToAdd = [{ type: StructureType.Headquarters, count: 1 }];
     // Clear existing structures
     this.structures.forEach(structure => structure.cleanup?.());
     this.structures = [];
@@ -218,9 +231,37 @@ export class GameState {
     this.agents.forEach(agent => agent.cleanup?.());
     this.agents = [];
 
-    // Generate new agents
-    const newAgents = Agent.generateAgents(this.map, this.resources, numAgents);
-    newAgents.forEach(agent => this.addAgent(agent));
+    // Find headquarters location
+    const hq = this.structures.find(s => s.getType() === StructureType.Headquarters);
+    if (!hq) {
+      console.warn('No headquarters found for agent spawning');
+      return;
+    }
+    
+    // Generate new agents near HQ
+    for (let i = 0; i < numAgents; i++) {
+      const agent = new LittleLad(this.map);
+      if (agent) {
+        this.addAgent(agent);
+      }
+    }
+    for (let i = 0; i < numAgents; i++) {
+      const agent = new Cow(this.map);
+      if (agent) {
+        this.addAgent(agent);
+      }
+    }
+
+    console.log(`Successfully placed ${this.agents.length} out of ${numAgents} requested agents`);
+  }
+
+  public getHQPosition(): Point {
+    const hq = this.structures.find(s => s.getType() === StructureType.Headquarters);
+    if (!hq) {
+      console.warn('No headquarters found for agent spawning');
+      return { x: 0, y: 0 };
+    }
+    return hq.getPosition();
   }
 
   // Add getter and setter for selected tile
@@ -290,11 +331,31 @@ export class GameState {
     });
   }
 
+  // fetch tiles
+  markTileAsFetchable(x: number, y: number): void {
+    this.fetchableTiles.add(`${x},${y}`);
+  }
+
+  // Individual clear methods
+  public clearFetchableTiles(): void {
+    this.fetchableTiles.clear();
+  }
+
+  // Modified get methods to respect visibility
+  public getFetchableTiles(): Point[] {
+    if (!this.showFetchableTiles) return [];
+    return Array.from(this.fetchableTiles).map(coord => {
+      const [x, y] = coord.split(',').map(Number);
+      return { x, y };
+    });
+  }
+
   // Clear all marked tiles
   public clearAllMarkedTiles(): void {
     this.clearFindableTiles();
     this.clearForageableTiles();
     this.clearFellableTiles();
+    this.clearFetchableTiles();
   }
 
   // Reset visibility states
@@ -302,6 +363,33 @@ export class GameState {
     this.showFindableTiles = true;
     this.showForageableTiles = true;
     this.showFellableTiles = true;
+    this.showFetchableTiles = true;
+  }
+
+  private resourceCounts: Map<ResourceCount, number> = new Map([
+    [ResourceCount.Berries, 0],
+    [ResourceCount.Wood, 0],
+    [ResourceCount.Cream, 0],
+    [ResourceCount.Stone, 0],
+  ]);
+
+  // Add these new methods
+  public getResourceCount(type: ResourceCount): number {
+    return this.resourceCounts.get(type) || 0;
+  }
+
+  public addToResourceCount(type: ResourceCount, amount: number): void {
+    const currentAmount = this.resourceCounts.get(type) || 0;
+    this.resourceCounts.set(type, currentAmount + amount);
+  }
+
+  public removeFromResourceCount(type: ResourceCount, amount: number): boolean {
+    const currentAmount = this.resourceCounts.get(type) || 0;
+    if (currentAmount >= amount) {
+      this.resourceCounts.set(type, currentAmount - amount);
+      return true;
+    }
+    return false;
   }
 }
 
