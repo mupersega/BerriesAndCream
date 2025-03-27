@@ -70,7 +70,7 @@ export class GameState {
 
     this.spritesheetLoadPromise = new Promise((resolve, reject) => {
       const img = new Image();
-      img.src = '/sprites.png';
+      img.src = `${import.meta.env.BASE_URL}sprites.png`;
       
       img.onload = () => {
         console.log('Spritesheet loaded successfully');
