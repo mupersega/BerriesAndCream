@@ -4,7 +4,8 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + TS</title>
+    <script src="https://unpkg.com/hyperscript.org@0.9.14"></script>
+    <title>Berries and Cream</title>
   </head>
   <body>
     <div id="app"></div>
@@ -16,6 +17,23 @@
       <div class="controls -row">
         <h3>Berries and Cream</h3>
         <button class="btn btn-primary" id="generateMap">Reset</button>
+      </div>
+    </div>
+    <div id="helperTextWrapper" data-counter="0" class="helpers">
+      <div class="helptext" style="display: none;">
+        <span>
+          Use w, a, s, d to move camera.
+        </span>
+      </div>
+      <div class="helptext" style="display: none;">
+        <span>
+          Use arrow keys to move camera.
+        </span>
+      </div>
+      <div class="helptext" style="display: none;">
+        <span>
+          Use mouse wheel to zoom in and out.
+        </span>
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>

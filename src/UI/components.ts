@@ -6,6 +6,24 @@ import { ResourceType, ResourceCount } from '../types/ResourceType';
 import { gameState, GameState } from '../state/GameState';
 import { getTilesInRadius } from '../utils/tileUtils';
 
+const behaviourDescriptions: { [key: string]: string } = {
+  'Forage': 'FORAGE | Search for berries',
+  'Hunt': 'HUNT | Search for animals',
+  'Rest': 'REST | Regain health',
+  'Flush': 'FLUSH | Drop off all resources at nearby base',
+  'Fell': 'FELL | Chop down trees',
+  'Fetch': 'FETCH | Fetch resources',
+  'Follow': 'FOLLOW | Follow another agent',
+  'Idle': 'IDLE | Do nothing'
+};
+
+const markingDescriptions: { [key: string]: string } = {
+  'Find': 'FIND | Mark tiles as findable',
+  'Forage': 'Forageable tiles will have their berry resources collected when a little lad is set to forage.',
+  'Fell': 'Fellable tiles to have their wood resources collected when a little lad is set to fell.',
+  'Fetch': 'Fetchable tiles allow for cows residing there to follow little lads set to fetch, back to base.',
+};
+
 export const UIComponents = {
   createAgentCard(agent: BaseAgent, index: number): string {
     const currentBehavior = agent.getBehavior();
@@ -17,7 +35,8 @@ export const UIComponents = {
           <h4>Agent ${index + 1}</h4>
           <div class="behavior-controls">
             ${allowedBehaviors.map(behavior => `
-              <button 
+              <button
+                title="${behaviourDescriptions[behavior] || behavior}"
                 class="behavior-button ${behavior.toLowerCase()} ${currentBehavior === behavior ? 'active' : ''}" 
                 data-behavior="${behavior}"
                 data-agent-index="${index}"
@@ -281,26 +300,47 @@ export function initActionPanel() {
 
   const actionPanel = document.createElement('div');
   actionPanel.className = 'action-panel';
+  // <div class="action-group">
+  //   <button class="toggle-button find-toggle" data-active="true">👁</button>
+  //   <button class="action-button find-button">Find</button>
+  //   <button class="toggle-button find-clear">✕</button>
+  // </div>
   actionPanel.innerHTML = `
-    <div class="action-group">
-      <button class="toggle-button find-toggle" data-active="true">👁</button>
-      <button class="action-button find-button">Find</button>
-      <button class="toggle-button find-clear">✕</button>
+    <div class="actions-description">
+      Select a tile and click an action to mark tiles in radius as actionable (2-4 to quick select):
     </div>
     <div class="action-group">
-      <button class="toggle-button forage-toggle" data-active="true">👁</button>
-      <button class="action-button forage-button">Forage</button>
-      <button class="toggle-button forage-clear">✕</button>
+      <button class="toggle-button forage-toggle" data-active="true">👁
+        <span class="tooltip">Toggle visibility of forageable tiles.</span>
+      </button>
+      <button class="action-button forage-button">Forage
+        <span class="tooltip">${markingDescriptions['Forage']}</span>
+      </button>
+      <button class="toggle-button forage-clear">✕
+        <span class="tooltip">Clear all forageable tiles.</span>
+      </button>
     </div>
     <div class="action-group">
-      <button class="toggle-button fell-toggle" data-active="true">👁</button>
-      <button class="action-button fell-button">Fell</button>
-      <button class="toggle-button fell-clear">✕</button>
+      <button class="toggle-button fell-toggle" data-active="true">👁
+        <span class="tooltip">Toggle visibility of fellable tiles.</span>
+      </button>
+      <button class="action-button fell-button">Fell
+        <span class="tooltip">${markingDescriptions['Fell']}</span>
+      </button>
+      <button class="toggle-button fell-clear">✕
+        <span class="tooltip">Clear all fellable tiles.</span>
+      </button>
     </div>
     <div class="action-group">
-      <button class="toggle-button fetch-toggle" data-active="true">👁</button>
-      <button class="action-button fetch-button"">Fetch</button>
-      <button class="toggle-button fetch-clear">✕</button>
+      <button class="toggle-button fetch-toggle" data-active="true">👁
+        <span class="tooltip">Toggle visibility of fetchable tiles.</span>
+      </button>
+      <button class="action-button fetch-button"">Fetch
+        <span class="tooltip">${markingDescriptions['Fetch']}</span>
+      </button>
+      <button class="toggle-button fetch-clear">✕
+        <span class="tooltip">Clear all fetchable tiles.</span>
+      </button>
     </div>
     <div class="separator"></div>
     <button class="action-button clear-all-button">Clear All (C)</button>
@@ -349,7 +389,7 @@ export function initActionPanel() {
   const forageButton = actionPanel.querySelector('.forage-button');
   const fellButton = actionPanel.querySelector('.fell-button');
   const fetchButton = actionPanel.querySelector('.fetch-button');
-  const clearButton = actionPanel.querySelector('.clear-button');
+  const clearButton = actionPanel.querySelector('.clear-all-button');
 
   if (findButton) {
     findButton.addEventListener('click', () => {
@@ -538,4 +578,28 @@ function getBehaviorIcon(behavior: string): string {
     'Idle': '💭'
   };
   return icons[behavior] || behavior[0];
+}
+
+
+// <div id="helperTextWrapper" data-counter="0" class="helpers">
+  // <div class="helptext">Use w, a, s, d to move camera.</div>
+  // <div class="helptext">And another tip 1.</div>
+  // <div class="helptext">And another tip 2.</div>
+// </div>
+// init the cycle loop for helper text
+export const initHelperText = () => {
+  const elt = document.getElementById('helperTextWrapper');
+  if (!elt) return;
+  const helpTexts = elt.querySelectorAll('.helptext') as NodeListOf<HTMLElement>;
+  let counter = 0;
+  elt.dataset.counter = '0';
+  helpTexts[0].style.display = 'flex';
+  setInterval(() => {
+    helpTexts.forEach((helpText, index) => {
+      helpText.style.display = index === counter ? 'flex' : 'none';
+    });
+    counter = (counter + 1) % helpTexts.length;
+    elt.dataset.counter = counter.toString();
+  }
+  , 10000);
 }

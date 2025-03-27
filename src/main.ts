@@ -2,7 +2,7 @@ import './style.scss'
 
 import { Dijkstra } from './pathfinding/Dijkstra';
 import { TileType } from './types/TileType';
-import { initInfoPanel, initSelectedTilePanel, updateSelectedTilePanel, initActionPanel, initHoverInfo, initResourceCounter } from './UI/components';
+import { initInfoPanel, initSelectedTilePanel, updateSelectedTilePanel, initActionPanel, initHoverInfo, initResourceCounter, initHelperText } from './UI/components';
 import { Point } from './types/Point';
 import { gameState } from './state/GameState';
 import { RenderSystem } from './rendering/RenderingSystem';
@@ -554,6 +554,9 @@ function generateNewMap() {
   initInfoPanel(gameState.getAgents());
   initSelectedTilePanel();
   initHoverInfo();
+  setTimeout(() => {
+    initHelperText();
+  }, 2000);
   initActionPanel();
   renderBackground(map);
   renderMap();
