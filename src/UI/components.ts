@@ -226,7 +226,7 @@ export function updateHoverInfo(hoverContainer: HTMLElement, selectedTile: Point
 }
 
 export function initSelectedTilePanel() {
-  const uiContainer = document.querySelector('.ui');
+  const uiContainer = document.querySelector('body');
   if (!uiContainer) return;
 
   // Create selected tile panel

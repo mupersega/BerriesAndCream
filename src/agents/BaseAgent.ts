@@ -83,7 +83,7 @@ export abstract class BaseAgent implements IDrawable {
       do {
         this.x = Math.floor(Math.random() * map[0].length);
         this.y = Math.floor(Math.random() * map.length);
-      } while (this.isWater(this.x, this.y));
+      } while (!this.isWalkable(this.x, this.y));
     } else {
       this.x = startX;
       this.y = startY;
@@ -436,7 +436,15 @@ export abstract class BaseAgent implements IDrawable {
     const result = this.target !== null;
     return result;
   }
-  
+
+  public isWalkable(x: number, y: number): boolean {
+    const tile = this.map[Math.round(y)][Math.round(x)];
+    return tile !== TileType.Water && 
+      tile !== TileType.DeepWater && 
+      tile !== TileType.Stone && 
+      tile !== TileType.Snow;
+  }
+
   public setTarget(x: number, y: number): void {
     const start = {
       x: Math.round(this.x),
@@ -449,11 +457,7 @@ export abstract class BaseAgent implements IDrawable {
       start,
       goal,
       (x, y) => {
-        const tile = this.map[y][x];
-        return tile !== TileType.Water && 
-               tile !== TileType.DeepWater && 
-               tile !== TileType.Stone && 
-               tile !== TileType.Snow;
+        return this.isWalkable(x, y)
       },
       this.map[0].length,
       this.map.length
