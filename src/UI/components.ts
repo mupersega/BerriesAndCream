@@ -295,7 +295,7 @@ export function updateSelectedTilePanel(selectedTile: Point | null, gameState: G
 }
 
 export function initActionPanel() {
-  const uiContainer = document.querySelector('.ui');
+  const uiContainer = document.querySelector('body');
   if (!uiContainer) return;
 
   const actionPanel = document.createElement('div');
@@ -305,10 +305,10 @@ export function initActionPanel() {
   //   <button class="action-button find-button">Find</button>
   //   <button class="toggle-button find-clear">✕</button>
   // </div>
+  // <div class="actions-description">
+  //   Select a tile and click an action to mark tiles in radius as actionable (2-4 to quick select):
+  // </div>
   actionPanel.innerHTML = `
-    <div class="actions-description">
-      Select a tile and click an action to mark tiles in radius as actionable (2-4 to quick select):
-    </div>
     <div class="action-group">
       <button class="toggle-button forage-toggle" data-active="true">👁
         <span class="tooltip">Toggle visibility of forageable tiles.</span>

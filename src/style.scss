@@ -18,6 +18,31 @@
   box-sizing: border-box;
 }
 
+p {
+  font-size: 1rem;
+  line-height: 1.5;
+  margin-bottom: 1rem;
+  color: #ccc; // Darker text for better readability
+}
+
+ol,
+ul {
+  padding-left: 1.5rem;
+}
+
+a {
+  font-weight: bold;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin-bottom: 1rem;
+}
+
 // variables
 :root {
   // terrain colors

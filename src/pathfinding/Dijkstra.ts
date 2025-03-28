@@ -109,32 +109,26 @@ export class Dijkstra {
       isInPath: false
     };
 
-    // console.log(`[Dijkstra] Starting at (${startNode.position.x}, ${startNode.position.y})`);
-    
     openSet.set(this.pointToKey(startNode.position), startNode);
 
-    // Create visualization nodes map
     const visualNodes = new Map<string, Node>();
 
     while (openSet.size > 0) {
       const current = this.getLowestCostNode(openSet);
       if (!current) break;
 
-      // Mark current node as explored for visualization
       current.isExplored = true;
       current.isInOpenSet = false;
       visualNodes.set(this.pointToKey(current.position), current);
 
       if (this.isAtGoal(current.position, goal)) {
-        // Highlight final path
         let pathNode: Node | null = current;
         while (pathNode) {
           pathNode.isInPath = true;
           visualNodes.set(this.pointToKey(pathNode.position), pathNode);
           pathNode = pathNode.parent;
         }
-        
-        // Final visualization update
+
         this.onVisualizationUpdate?.(visualNodes);
         return this.reconstructPath(current);
       }
@@ -144,7 +138,7 @@ export class Dijkstra {
 
       for (const neighbor of this.getNeighbors(current, maxX, maxY)) {
         const neighborKey = this.pointToKey(neighbor.position);
-        
+
         if (closedSet.has(neighborKey)) continue;
         if (!isWalkable(neighbor.position.x, neighbor.position.y)) continue;
 
@@ -154,7 +148,7 @@ export class Dijkstra {
         if (!existingNeighbor) {
           neighbor.cost = tentativeCost;
           neighbor.parent = current;
-          neighbor.isInOpenSet = true;  // Mark as in open set
+          neighbor.isInOpenSet = true;
           openSet.set(neighborKey, neighbor);
           visualNodes.set(neighborKey, neighbor);
         } else if (tentativeCost < existingNeighbor.cost) {
@@ -163,10 +157,11 @@ export class Dijkstra {
         }
       }
 
-      // Update visualization after each step
       this.onVisualizationUpdate?.(visualNodes);
     }
 
+    // If we exit the loop without finding a path
+    console.warn(`[Dijkstra] No path found from (${start.x}, ${start.y}) to (${goal.x}, ${goal.y})`);
     return null;
   }
-} 
+}

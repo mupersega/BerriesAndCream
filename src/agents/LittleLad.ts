@@ -6,7 +6,7 @@ export class LittleLad extends BaseAgent {
     protected readonly MAX_SPEED: number = 0.04;
 
     constructor(map: TileType[][], startX?: number, startY?: number) {
-        super(map, startX, startY, ['Forage', 'Flush', 'Fetch', 'Idle'], 'LittleLad');
+        super(map, startX, startY, ['Forage', 'Fell', 'Flush', 'Fetch', 'Idle'], 'LittleLad');
         
         // Set LittleLad-specific bounce properties
         this.setBounceHeight(3);

@@ -458,7 +458,7 @@ export abstract class BaseAgent implements IDrawable {
       this.map[0].length,
       this.map.length
     );
-    
+    // TODO: Catch when path is null and maybe add to list of known unreachable targets
     if (path) {
       this.setTargetWithPath(goal, path);
     } else {

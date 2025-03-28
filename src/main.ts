@@ -486,15 +486,16 @@ function gameLoop() {
   }
   
   // Render map using the map from gameState
-  renderMap();
+  renderDynamics();
 
   requestAnimationFrame(gameLoop);
 }
 
-function renderMap() {
+function renderDynamics() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.save();
   ctx.translate(canvas.width / 2, 100);
+
 
   // Draw all overlays in a single batch
   drawTileOverlays(ctx);
@@ -557,7 +558,7 @@ function generateNewMap() {
   }, 2000);
   initActionPanel();
   renderBackground(map);
-  renderMap();
+  renderDynamics();
 }
 
 // Initialize the map when the page loads
@@ -703,7 +704,30 @@ function updateInfoPanel() {
 // Split render into static and dynamic parts
 function renderBackground(map: TileType[][]) {
   backgroundCtx.clearRect(0, 0, backgroundCanvas.width, backgroundCanvas.height);
-  
+
+  // backgroundCtx.fillRect(0, 0, backgroundCanvas.width, backgroundCanvas.height);
+  // add another gradient pass
+  const gradient = backgroundCtx.createLinearGradient(0, 0, 0, backgroundCanvas.height);
+  gradient.addColorStop(0, 'rgba(52, 245, 255, 0.94)');
+  gradient.addColorStop(1, 'rgba(255, 81, 0, 0.65)');
+  backgroundCtx.fillStyle = gradient;
+  backgroundCtx.fillRect(0, 0, backgroundCanvas.width, backgroundCanvas.height);
+  const bgGrd = backgroundCtx.createRadialGradient(
+    backgroundCanvas.width / 2,
+    backgroundCanvas.height / 2,
+    0,
+    backgroundCanvas.width / 2,
+    backgroundCanvas.height / 2,
+    backgroundCanvas.width / 2,
+  );
+  bgGrd.addColorStop(0, 'rgba(87, 87, 87, 0.88)');
+  bgGrd.addColorStop(0.3, 'rgba(44, 44, 44, 0.7)');
+  bgGrd.addColorStop(1, 'rgba(0, 0, 0, 0.93)');
+
+
+  backgroundCtx.fillStyle = bgGrd;
+  backgroundCtx.fillRect(0, 0, backgroundCanvas.width, backgroundCanvas.height);
+
   // Center the isometric view
   backgroundCtx.save();
   backgroundCtx.translate(backgroundCanvas.width / 2, 100);
@@ -1163,7 +1187,7 @@ function drawAgentPath(agent: BaseAgent, path: Point[]) {
   const pos = agent.getPosition();
   
   ctx.save();
-  // Match the translation used in renderMap
+  // Match the translation used in renderDynamics
   ctx.translate(canvas.width / 2, 100);
   
   // Draw path
@@ -1182,8 +1206,8 @@ function drawAgentPath(agent: BaseAgent, path: Point[]) {
   });
   
   // Make the path more visible
-  ctx.strokeStyle = 'rgba(255, 255, 0, 0.8)'; // Brighter yellow
-  ctx.lineWidth = 3;
+  ctx.strokeStyle = 'rgba(0, 42, 255, 0.62)'; // Brighter yellow
+  ctx.lineWidth = 1;
   ctx.stroke();
   
   // Draw points along the path
@@ -1192,8 +1216,8 @@ function drawAgentPath(agent: BaseAgent, path: Point[]) {
     const isoY = (point.x + point.y) * (tileSize/2);
     
     ctx.beginPath();
-    ctx.arc(isoX, isoY, 4, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255, 0, 0, 0.8)'; // Red dots
+    ctx.arc(isoX, isoY, 2, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0, 170, 255, 0.61)'; // Red dots
     ctx.fill();
   });
   

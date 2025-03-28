@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://unpkg.com/hyperscript.org@0.9.14"></script>
     <title>Berries and Cream</title>
   </head>
   <body>
@@ -33,6 +34,127 @@
         <span>
           Use mouse wheel to zoom in and out.
         </span>
+      </div>
+    </div>
+    <button class="dev-panel-button" popovertarget="dev-panel-wrapper">Info</button>
+    <div class="dev-panel-wrapper" popover id="dev-panel-wrapper">
+      <div class="dev-panel">
+        <div class="dev-panel-header">
+          <div class="tabs">
+            <a class="tab" id="dev-panel-tab-1" href="#dev-panel-1">Info</a>
+            <a class="tab" id="dev-panel-tab-2" href="#dev-panel-2">Controls</a>
+            <a class="tab" id="dev-panel-tab-3" href="#dev-panel-3">Settings</a>
+            <a class="tab" id="dev-panel-tab-4" href="#dev-panel-4">Development</a>
+            <a class="tab" id="dev-panel-tab-5" href="#dev-panel-5">About</a>
+          </div>
+        </div>
+        <div class="panels">
+          <div class="panel" id="dev-panel-1">
+            <div class="panel-content">
+              <section>
+                <h4>Game Info</h4>
+                <p>This is a semi-cozy game all about managing your
+                  <a href="https://www.youtube.com/watch?v=hsPFyoEpGVA" target="_blank">little lads who like berries and cream</a>.
+                </p>
+                <p>Please note, this game is in active development and that you may track my progress and future plans in the <a href="#dev-panel-4">development</a> tab.</p>
+              </section>
+              <section>
+                <h4>The Goal</h4>
+                <p>Have fun and manage your little lads. Forage for berries, Fetch cows for cream, Fell trees for lumber, track your current resources in the top right.
+                  Your currently available little lads can be seen in the little lads window to the left of the screen.</p>
+                <p>Here you will find their available behaviours, gain more info as to their inventory and
+                  current pathing information by pressing the chevron to the right of behaviours.</p>
+                </section>
+                <section>
+                  <p>For example, to forage for berries you will need to do the following:
+                  </p>
+                  <ol>
+                    <li>Select a tile near to a berry pile, berry bush, or berry tree,</li>
+                    <li>Designate tiles around the selected tile to be forageable by pressing the 'Forage' button in the top bar,</li>
+                    <li>Set one of your little lad's behaviour to 'Forage' by pressing the berry icon,</li>
+                    <li>Watch as your little lads forage berries, and return them to their home.</li>
+                  </ol>
+                </section>
+            </div>
+          </div>
+          <div class="panel" id="dev-panel-2">
+            <div class="panel-content">
+              <h4>Controls</h4>
+              <p>WASD to move camera</p>
+            </div>
+          </div>
+          <div class="panel" id="dev-panel-3">
+            <div class="panel-content">
+              <h4>Settings</h4>
+              <p>Settings go here.</p>
+            </div>
+          </div>
+          <div class="panel" id="dev-panel-4">
+            <div class="panel-content">
+              <section>
+                <h4>Development</h4>
+                <p>This game is in active development 😊</p>
+                <p>Features, Bugs, and Fixes current status are shown where</p>
+                <ul style="list-style: none;">
+                  <li class="completed">completed :</li>
+                  <li class="in-progress">in progress :</li>
+                  <li class="inactive">still to begin :</li>
+                </ul>
+                
+              </section>
+              <section>
+                <h4>Features/Enhancements</h4>
+                  <ul>
+                    <li class="completed">Foraging (behaviour)</li>
+                    <li class="completed">Felling (behaviour)</li>
+                    <li class="completed">Fetching (behaviour)</li>
+                    <li class="completed">Following (cows, behaviour)</li>
+                    <li class="completed">Little lads (ui)</li>
+                    <li class="completed">Current resources (ui)</li>
+                    <li class="completed">Tile designation (ui)</li>
+                    <li class="in-progress">Info window (ui)</li>
+                    <li class="inactive">Cream resource (generation)</li>
+                    <li class="in-progress">Loading screen</li>
+                    <li class="inactive">Map zoom on scroll (ux)</li>
+                    <li class="inactive">Custom resource icons (art)</li>
+                    <li class="inactive">Ui sprites (art)</li>
+                    <li class="inactive">Ui sprites (implement)</li>
+                    <li class="inactive">Settle on and implement font</li>
+                    <li class="inactive">Include sound</li>
+                    <li class="inactive">Include music</li>
+                    <li class="inactive">Include Little Lad market</li>
+                    <li class="inactive">Notifications</li>
+                    <li class="inactive">Include dynamic behaviour assignment</li>
+                    <li class="inactive">Fighting (behaviour)</li>
+                    <li class="inactive">Forging (behavior)</li>
+                    <li class="inactive">Fracturing (behaviour for stone)</li>
+                  </ul>
+              </section>
+              <section>
+                <h4>Known Bugs</h4>
+                <ul>
+                  <li class="inactive">LLs can get caught travelling diagonally between land tiles if water below.</li>
+                  <li class="inactive">Game full borks if a target exists but is unreachable, LL tries to get the same target again and again with pathfinder, instead of ignoring impossible-to-reach targets.</li>
+                </ul>
+              </section>
+              <section>
+                <h4>Fixes</h4>
+                <ul>
+                  <li class="inactive">Ensure agents can't spawn on unwalkable tiles.</li>
+                </ul>
+              </section>
+            </div>
+          </div>
+          <div class="panel" id="dev-panel-5">
+            <div class="panel-content">
+              <h4>About</h4>
+              <p>Current Version: 0.01</p>
+              <p>Last Updated: 28/03/2025</p>
+              <p>All code and sprites are original and created by <a href="https://github.com/mupersega" target="_blank">mupersega</a>.</p>
+              <p>If you would like to learn more about my work, check out <a href="https://mupersega.dev" target="_blank">mupersega.dev</a></p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
